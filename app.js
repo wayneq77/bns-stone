@@ -39,8 +39,9 @@ const I18N = {
         'nextSpawn': '下次出現',
         'remaining': '剩餘',
         'pending': '等待設定',
-        'active': '出現中！',
-        'spawning': '馬上出現！',
+        'active': '已出現',
+        'spawning': '已出現',
+        'despawning': '消失倒數',
         'collected': '已撿完',
         'notCollected': '未撿完',
         'btnSpawned': '已出現靈石',
@@ -78,8 +79,9 @@ const I18N = {
         'nextSpawn': 'Next Spawn',
         'remaining': 'Remaining',
         'pending': 'Pending',
-        'active': 'Spawning!',
-        'spawning': 'Spawning!',
+        'active': 'Spawned',
+        'spawning': 'Spawned',
+        'despawning': 'Despawning in',
         'collected': 'Collected',
         'notCollected': 'Unknown',
         'btnSpawned': 'Spawned',
@@ -624,8 +626,9 @@ class SoulstoneTracker {
             return;
         }
 
-        // Format next spawn time
+        // Format next spawn time natively (will be overridden below if active)
         nextEl.textContent = this.formatTime(state.nextSpawn);
+        const timerLabel = countdownEl.previousElementSibling;
 
         // Calculate remaining time
         const remaining = state.nextSpawn.getTime() - now.getTime();
@@ -657,14 +660,23 @@ class SoulstoneTracker {
         if (remaining <= 0) {
             // Spawn is active! showing the time left until despawn
             const despawnRemaining = (20 * 60 * 1000) + remaining;
+            
+            // 下次出現時間要往後推 140 分鐘來顯示 (滿足玩家看到下一輪時間的需求)
+            const nextCycleTime = new Date(state.nextSpawn.getTime() + 140 * 60 * 1000);
+            nextEl.textContent = this.formatTime(nextCycleTime);
+
+            if (timerLabel) timerLabel.textContent = t('despawning'); // changed to 消失倒數
             countdownEl.textContent = this.formatDuration(despawnRemaining);
             countdownEl.className = 'timer-countdown danger';
-            statusEl.textContent = t('spawning');
+            statusEl.textContent = t('spawning'); // which now translates to 已出現
             statusEl.className = 'map-status danger';
             cardEl.classList.add('urgent');
             cardEl.classList.remove('soon');
         } else {
             // Show countdown
+            nextEl.textContent = this.formatTime(state.nextSpawn); // revert back to normal
+
+            if (timerLabel) timerLabel.textContent = t('remaining');
             countdownEl.textContent = this.formatDuration(remaining);
             
             // 根據collectedUsed顯示狀態
