@@ -579,11 +579,11 @@ class SoulstoneTracker {
             });
         });
 
-        // 校正（收到提醒）buttons — 直接執行，不需確認
+        // 校正（收到提醒）buttons — 顯示確認視窗
         document.querySelectorAll('.interval-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const mapId = e.currentTarget.dataset.map;
-                this.setNextIntervalTime(mapId);
+                this.handleSetIntervalSpawn(mapId);
             });
         });
 
@@ -594,19 +594,46 @@ class SoulstoneTracker {
                 this.handleMarkCollected(mapId);
             });
         });
-
-        // 重置 buttons
-        document.querySelectorAll('.reset-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const mapId = e.currentTarget.dataset.map;
-                this.resetTimer(mapId);
-            });
-        });
     }
 
     // ================================
     // 確認對話框處理
     // ================================
+
+    handleSetIntervalSpawn(mapId) {
+        const modal = document.getElementById('confirm-modal');
+        const modalMessage = document.getElementById('modal-message');
+        const modalSubMsg = document.getElementById('modal-submsg');
+        const modalConfirm = document.getElementById('modal-confirm');
+        const modalCancel = document.getElementById('modal-cancel');
+
+        modalMessage.textContent = '確定出現即將出現靈石的圖案再點此按鈕？';
+        modalSubMsg.innerHTML = '將自動對齊到最近的一輪時間，並開始計算。確認執行嗎？';
+
+        modal.classList.add('active');
+
+        const newConfirmBtn = modalConfirm.cloneNode(true);
+        const newCancelBtn = modalCancel.cloneNode(true);
+        modalConfirm.parentNode.replaceChild(newConfirmBtn, modalConfirm);
+        modalCancel.parentNode.replaceChild(newCancelBtn, modalCancel);
+
+        newConfirmBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+            this.setNextIntervalTime(mapId);
+        });
+
+        newCancelBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+
+        const bgClose = (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+                modal.removeEventListener('click', bgClose);
+            }
+        };
+        modal.addEventListener('click', bgClose);
+    }
 
     handleSetSpawn(mapId) {
         const modal = document.getElementById('confirm-modal');
