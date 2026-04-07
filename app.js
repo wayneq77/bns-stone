@@ -355,11 +355,21 @@ class SoulstoneTracker {
         // 標記已使用
         mapState.collectedUsed = true;
 
-        // 直接把目前的下次出現時間提早 20 分鐘
-        if (mapState.nextSpawn) {
+        const now = new Date();
+        const remaining = mapState.nextSpawn.getTime() - now.getTime();
+
+        if (remaining <= 30 * 60 * 1000) {
+            // 如果是在「即將出現」(10m)的預估階段，或是靈石已出現(remaining <= 0)
+            // 按下「已撿完」代表現在剛打完，下一輪將從現在起算 120 分鐘。
+            mapState.nextSpawn = new Date(now.getTime() + CONFIG.COLLECTED_INTERVAL);
+            mapState.cycleEndTime = mapState.nextSpawn;
+        } else {
+            // 如果是在 140 分鐘的正常循環中按下「已撿完」
+            // 直接將原本預計的時間扣除 20 分鐘
             mapState.nextSpawn = new Date(mapState.nextSpawn.getTime() - (CONFIG.DEFAULT_INTERVAL - CONFIG.COLLECTED_INTERVAL));
         }
-        mapState.lastUpdated = new Date();
+        
+        mapState.lastUpdated = now;
 
         this.saveToSupabase(mapId);
         this.updateDisplay(mapId);
@@ -632,24 +642,21 @@ class SoulstoneTracker {
 
         // 計算按下時的基準時間
         const now = new Date();
-        const baseTime = this.calculateBaseTime(now);
-        const nextSpawnTime = new Date(baseTime.getTime() + CONFIG.DEFAULT_INTERVAL);
-        const baseTimeStr = `${baseTime.getHours().toString().padStart(2,'0')}:${baseTime.getMinutes().toString().padStart(2,'0')}`;
+        const nextSpawnTime = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
+        const baseTimeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
         const nextTimeStr = `${nextSpawnTime.getHours().toString().padStart(2,'0')}:${nextSpawnTime.getMinutes().toString().padStart(2,'0')}`;
 
         modalMessage.textContent = '確定靈石已出現了嗎？';
-        modalSubMsg.innerHTML = `將以 <strong style="color:var(--accent-orange)">${baseTimeStr}</strong> 為基準，下次出現時間約為 <strong style="color:var(--accent-gold)">${nextTimeStr}</strong>（140分後）。<br>若靈石未撿完，則保持140分鐘倒計時。已撿完可按「已撿完」縮短20分鐘，每輪限一次。`;
+        modalSubMsg.innerHTML = `將以當下時間 <strong style="color:var(--accent-orange)">${baseTimeStr}</strong> 為起點，下次出現設定為 <strong style="color:var(--accent-gold)">${nextTimeStr}</strong>（140分後）。<br>打完如果有撿到靈石，即可按下「已撿完」將時間縮短20分鐘。`;
 
         // 顯示 modal
         modal.classList.add('active');
 
-        // 清理舊的事件監聽器
         const newConfirmBtn = modalConfirm.cloneNode(true);
         const newCancelBtn = modalCancel.cloneNode(true);
         modalConfirm.parentNode.replaceChild(newConfirmBtn, modalConfirm);
         modalCancel.parentNode.replaceChild(newCancelBtn, modalCancel);
 
-        // 確認按鈕
         newConfirmBtn.addEventListener('click', () => {
             modal.classList.remove('active');
             this.setSpawnTime(mapId);
