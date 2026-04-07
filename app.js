@@ -433,16 +433,6 @@ class SoulstoneTracker {
                             cycleEndTime: data.maps[serverMapId].cycleEndTime ? new Date(data.maps[serverMapId].cycleEndTime) : null,
                             baseTime: data.maps[serverMapId].baseTime ? new Date(data.maps[serverMapId].baseTime) : null
                         };
-                    } else if (data[map.id]) {
-                        // Legacy support without server prefix (migrate it)
-                        this.state[map.id] = {
-                            ...this.state[map.id],
-                            ...data[map.id],
-                            nextSpawn: data[map.id].nextSpawn ? new Date(data[map.id].nextSpawn) : null,
-                            lastUpdated: data[map.id].lastUpdated ? new Date(data[map.id].lastUpdated) : null,
-                            cycleEndTime: data[map.id].cycleEndTime ? new Date(data[map.id].cycleEndTime) : null,
-                            baseTime: data[map.id].baseTime ? new Date(data[map.id].baseTime) : null
-                        };
                     }
                 });
                 this.updateAllDisplays();
