@@ -13,12 +13,17 @@
     <div class="bg-glow"></div>
 
     <header class="site-header">
-        <div class="container">
-            <h1 class="logo">
-                <span class="logo-icon">💎</span>
-                <span class="logo-text">靈石追蹤器</span>
-            </h1>
-            <p class="subtitle">劍靈：革命 · 及時掌握靈石動向</p>
+        <div class="container" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h1 class="logo">
+                    <span class="logo-icon">💎</span>
+                    <span class="logo-text" data-i18n="title">靈石追蹤器</span>
+                </h1>
+                <p class="subtitle" data-i18n="subtitle">劍靈：革命 · 及時掌握靈石動向</p>
+            </div>
+            <div>
+                <button id="lang-toggle" class="btn btn-sm" style="background:#4b5563; color:white;">English</button>
+            </div>
         </div>
     </header>
 
@@ -45,13 +50,13 @@
                 <div class="card-header">
                     <div class="map-icon">🏔️</div>
                     <div class="map-info">
-                        <h2 class="map-name">靈石谷</h2>
-                        <span class="map-status" id="status-spirit-stone-valley">等待設定</span>
+                        <h2 class="map-name" data-i18n="spirit-stone-valley">靈石谷</h2>
+                        <span class="map-status" id="status-spirit-stone-valley" data-i18n="pending">等待設定</span>
                     </div>
                 </div>
                 <div class="timer-display" id="timer-spirit-stone-valley">
                     <div class="timer-row">
-                        <span class="timer-label">下次出現</span>
+                        <span class="timer-label" data-i18n="nextSpawn">下次出現</span>
                         <div class="timer-value-container">
                             <span class="timer-value" id="next-spirit-stone-valley">--:--:--</span>
                             <div class="adjust-btns">
@@ -63,17 +68,17 @@
                         </div>
                     </div>
                     <div class="timer-row">
-                        <span class="timer-label">剩餘</span>
+                        <span class="timer-label" data-i18n="remaining">剩餘</span>
                         <span class="timer-countdown" id="countdown-spirit-stone-valley">--:--:--</span>
                     </div>
                 </div>
                 <div class="card-actions">
                     <div class="actions-top">
-                        <button class="btn btn-primary set-btn" data-action="set" data-map="spirit-stone-valley">已出現靈石</button>
-                        <button class="btn btn-info interval-btn" data-action="interval" data-map="spirit-stone-valley">即將出現靈石</button>
+                        <button class="btn btn-primary set-btn" data-action="set" data-map="spirit-stone-valley" data-i18n="btnSpawned">已出現靈石</button>
+                        <button class="btn btn-info interval-btn" data-action="interval" data-map="spirit-stone-valley" data-i18n="btnUpcoming">即將出現靈石</button>
                     </div>
                     <div class="actions-bottom">
-                        <button class="btn btn-success collected-btn" data-action="collected" data-map="spirit-stone-valley">已撿完</button>
+                        <button class="btn btn-success collected-btn" data-action="collected" data-map="spirit-stone-valley" data-i18n="btnCollected">已撿完</button>
                     </div>
                 </div>
             </div>
@@ -83,13 +88,13 @@
                 <div class="card-header">
                     <div class="map-icon">🏯</div>
                     <div class="map-info">
-                        <h2 class="map-name">玉皇要塞</h2>
-                        <span class="map-status" id="status-yu-hwang-fortress">等待設定</span>
+                        <h2 class="map-name" data-i18n="yu-hwang-fortress">玉皇要塞</h2>
+                        <span class="map-status" id="status-yu-hwang-fortress" data-i18n="pending">等待設定</span>
                     </div>
                 </div>
                 <div class="timer-display" id="timer-yu-hwang-fortress">
                     <div class="timer-row">
-                        <span class="timer-label">下次出現</span>
+                        <span class="timer-label" data-i18n="nextSpawn">下次出現</span>
                         <div class="timer-value-container">
                             <span class="timer-value" id="next-yu-hwang-fortress">--:--:--</span>
                             <div class="adjust-btns">
@@ -101,17 +106,17 @@
                         </div>
                     </div>
                     <div class="timer-row">
-                        <span class="timer-label">剩餘</span>
+                        <span class="timer-label" data-i18n="remaining">剩餘</span>
                         <span class="timer-countdown" id="countdown-yu-hwang-fortress">--:--:--</span>
                     </div>
                 </div>
                 <div class="card-actions">
                     <div class="actions-top">
-                        <button class="btn btn-primary set-btn" data-action="set" data-map="yu-hwang-fortress">已出現靈石</button>
-                        <button class="btn btn-info interval-btn" data-action="interval" data-map="yu-hwang-fortress">即將出現靈石</button>
+                        <button class="btn btn-primary set-btn" data-action="set" data-map="yu-hwang-fortress" data-i18n="btnSpawned">已出現靈石</button>
+                        <button class="btn btn-info interval-btn" data-action="interval" data-map="yu-hwang-fortress" data-i18n="btnUpcoming">即將出現靈石</button>
                     </div>
                     <div class="actions-bottom">
-                        <button class="btn btn-success collected-btn" data-action="collected" data-map="yu-hwang-fortress">已撿完</button>
+                        <button class="btn btn-success collected-btn" data-action="collected" data-map="yu-hwang-fortress" data-i18n="btnCollected">已撿完</button>
                     </div>
                 </div>
             </div>
@@ -121,13 +126,13 @@
                 <div class="card-header">
                     <div class="map-icon">🩸</div>
                     <div class="map-info">
-                        <h2 class="map-name">糾土地帶</h2>
-                        <span class="map-status" id="status-blood-ruffian-base">等待設定</span>
+                        <h2 class="map-name" data-i18n="blood-ruffian-base">糾土地帶</h2>
+                        <span class="map-status" id="status-blood-ruffian-base" data-i18n="pending">等待設定</span>
                     </div>
                 </div>
                 <div class="timer-display" id="timer-blood-ruffian-base">
                     <div class="timer-row">
-                        <span class="timer-label">下次出現</span>
+                        <span class="timer-label" data-i18n="nextSpawn">下次出現</span>
                         <div class="timer-value-container">
                             <span class="timer-value" id="next-blood-ruffian-base">--:--:--</span>
                             <div class="adjust-btns">
@@ -139,17 +144,17 @@
                         </div>
                     </div>
                     <div class="timer-row">
-                        <span class="timer-label">剩餘</span>
+                        <span class="timer-label" data-i18n="remaining">剩餘</span>
                         <span class="timer-countdown" id="countdown-blood-ruffian-base">--:--:--</span>
                     </div>
                 </div>
                 <div class="card-actions">
                     <div class="actions-top">
-                        <button class="btn btn-primary set-btn" data-action="set" data-map="blood-ruffian-base">已出現靈石</button>
-                        <button class="btn btn-info interval-btn" data-action="interval" data-map="blood-ruffian-base">即將出現靈石</button>
+                        <button class="btn btn-primary set-btn" data-action="set" data-map="blood-ruffian-base" data-i18n="btnSpawned">已出現靈石</button>
+                        <button class="btn btn-info interval-btn" data-action="interval" data-map="blood-ruffian-base" data-i18n="btnUpcoming">即將出現靈石</button>
                     </div>
                     <div class="actions-bottom">
-                        <button class="btn btn-success collected-btn" data-action="collected" data-map="blood-ruffian-base">已撿完</button>
+                        <button class="btn btn-success collected-btn" data-action="collected" data-map="blood-ruffian-base" data-i18n="btnCollected">已撿完</button>
                     </div>
                 </div>
             </div>
@@ -159,13 +164,13 @@
                 <div class="card-header">
                     <div class="map-icon">🌋</div>
                     <div class="map-info">
-                        <h2 class="map-name">赤龍火山</h2>
-                        <span class="map-status" id="status-red-dragon-forge">等待設定</span>
+                        <h2 class="map-name" data-i18n="red-dragon-forge">赤龍火山</h2>
+                        <span class="map-status" id="status-red-dragon-forge" data-i18n="pending">等待設定</span>
                     </div>
                 </div>
                 <div class="timer-display" id="timer-red-dragon-forge">
                     <div class="timer-row">
-                        <span class="timer-label">下次出現</span>
+                        <span class="timer-label" data-i18n="nextSpawn">下次出現</span>
                         <div class="timer-value-container">
                             <span class="timer-value" id="next-red-dragon-forge">--:--:--</span>
                             <div class="adjust-btns">
@@ -177,17 +182,17 @@
                         </div>
                     </div>
                     <div class="timer-row">
-                        <span class="timer-label">剩餘</span>
+                        <span class="timer-label" data-i18n="remaining">剩餘</span>
                         <span class="timer-countdown" id="countdown-red-dragon-forge">--:--:--</span>
                     </div>
                 </div>
                 <div class="card-actions">
                     <div class="actions-top">
-                        <button class="btn btn-primary set-btn" data-action="set" data-map="red-dragon-forge">已出現靈石</button>
-                        <button class="btn btn-info interval-btn" data-action="interval" data-map="red-dragon-forge">即將出現靈石</button>
+                        <button class="btn btn-primary set-btn" data-action="set" data-map="red-dragon-forge" data-i18n="btnSpawned">已出現靈石</button>
+                        <button class="btn btn-info interval-btn" data-action="interval" data-map="red-dragon-forge" data-i18n="btnUpcoming">即將出現靈石</button>
                     </div>
                     <div class="actions-bottom">
-                        <button class="btn btn-success collected-btn" data-action="collected" data-map="red-dragon-forge">已撿完</button>
+                        <button class="btn btn-success collected-btn" data-action="collected" data-map="red-dragon-forge" data-i18n="btnCollected">已撿完</button>
                     </div>
                 </div>
             </div>

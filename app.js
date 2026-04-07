@@ -32,6 +32,86 @@ const CONFIG = {
 // State Management
 // ================================
 
+const I18N = {
+    'zh': {
+        'title': '靈石追蹤器',
+        'subtitle': '劍靈：革命 · 及時掌握靈石動向',
+        'nextSpawn': '下次出現',
+        'remaining': '剩餘',
+        'pending': '等待設定',
+        'active': '出現中！',
+        'spawning': '馬上出現！',
+        'collected': '已撿完',
+        'notCollected': '未撿完',
+        'btnSpawned': '已出現靈石',
+        'btnUpcoming': '即將出現靈石',
+        'btnCollected': '已撿完',
+        // maps
+        'spirit-stone-valley': '靈石谷',
+        'yu-hwang-fortress': '玉皇要塞',
+        'blood-ruffian-base': '糾土地帶',
+        'red-dragon-forge': '赤龍火山',
+        // toasts & modals
+        'toastShorten': '✅ 採集完成！已縮短 20 分鐘',
+        'toastCollected': '✅ 採集完成！下輪出現時間：120 分鐘後',
+        'toastAdjusted': '✅ 時間已微調',
+        'toastReset': '🔔 校正完成：靈石將出現在',
+        // modal 1
+        'modalSpawnedTitle': '確定靈石已出現了嗎？',
+        'modalSpawnedSub': (base, next) => `將以當下時間 <strong style="color:var(--accent-orange)">${base}</strong> 為起點，下次出現設定為 <strong style="color:var(--accent-gold)">${next}</strong>（140分後）。<br>若本輪的靈石已被採集完畢，即可按下「已撿完」將時間縮短20分鐘。`,
+        // modal 2
+        'modalUpcomingTitle': '確定出現即將出現靈石的圖案再點此按鈕？',
+        'modalUpcomingSub': '將自動設定為 **10分鐘後** 出現，並開始倒數計時。確認執行嗎？',
+        // toggle
+        'langToggle': 'English',
+        'modalConfirm': '確定',
+        'modalCancel': '取消'
+    },
+    'en': {
+        'title': 'Soulstone Tracker',
+        'subtitle': 'B&S Revolution · Realtime Tracker',
+        'nextSpawn': 'Next Spawn',
+        'remaining': 'Remaining',
+        'pending': 'Pending',
+        'active': 'Spawning!',
+        'spawning': 'Spawning!',
+        'collected': 'Collected',
+        'notCollected': 'Unknown',
+        'btnSpawned': 'Spawned',
+        'btnUpcoming': 'Upcoming',
+        'btnCollected': 'Collected',
+        // maps
+        'spirit-stone-valley': 'Spirit Stone Valley',
+        'yu-hwang-fortress': 'Yu Hwang Fortress',
+        'blood-ruffian-base': 'Blood Ruffian Base',
+        'red-dragon-forge': 'Red Dragon Forge',
+        // toasts & modals
+        'toastShorten': '✅ Collected! Timer shortened by 20m',
+        'toastCollected': '✅ Collected! Next spawn in 120m',
+        'toastAdjusted': '✅ Time adjusted',
+        'toastReset': '🔔 Calibrated! Next spawn at',
+        // modal 1
+        'modalSpawnedTitle': 'Confirm Soulstone spawned?',
+        'modalSpawnedSub': (base, next) => `Starting from <strong style="color:var(--accent-orange)">${base}</strong>, next spawn will be <strong style="color:var(--accent-gold)">${next}</strong> (in 140m).<br>If all stones are collected later, click "Collected" to reduce the timer by 20m.`,
+        // modal 2
+        'modalUpcomingTitle': 'Confirm upcoming warning?',
+        'modalUpcomingSub': 'This will set the spawn time to exactly **10 minutes from now**. Confirm?',
+        'langToggle': '繁體中文',
+        'modalConfirm': 'Confirm',
+        'modalCancel': 'Cancel'
+    }
+};
+
+let currentLang = localStorage.getItem('soulstone-lang') || 'zh';
+
+function t(key, ...args) {
+    const text = I18N[currentLang][key];
+    if (typeof text === 'function') {
+        return text(...args);
+    }
+    return text !== undefined ? text : key;
+}
+
 class SoulstoneTracker {
     constructor() {
         this.state = {};
@@ -323,6 +403,7 @@ class SoulstoneTracker {
         
         this.saveToSupabase(mapId);
         this.updateDisplay(mapId);
+        this.showToast(t('toastAdjusted'));
     }
 
     /**
@@ -363,12 +444,12 @@ class SoulstoneTracker {
             // 按下「已撿完」代表現在剛打完，下一輪將從現在起算 120 分鐘。
             mapState.nextSpawn = new Date(now.getTime() + CONFIG.COLLECTED_INTERVAL);
             mapState.cycleEndTime = mapState.nextSpawn;
-            this.showToast('✅ 採集完成！下輪出現時間：120 分鐘後');
+            this.showToast(t('toastCollected'));
         } else {
             // 如果是在 140 分鐘的正常循環中按下「已撿完」
             // 直接將原本預計的時間扣除 20 分鐘
             mapState.nextSpawn = new Date(mapState.nextSpawn.getTime() - (CONFIG.DEFAULT_INTERVAL - CONFIG.COLLECTED_INTERVAL));
-            this.showToast('✅ 採集完成！已縮短 20 分鐘');
+            this.showToast(t('toastShorten'));
         }
         
         mapState.lastUpdated = now;
@@ -406,7 +487,7 @@ class SoulstoneTracker {
 
         const h = this.state[mapId].nextSpawn.getHours().toString().padStart(2, '0');
         const m = this.state[mapId].nextSpawn.getMinutes().toString().padStart(2, '0');
-        this.showToast(`🔔 校正完成：靈石將於 ${h}:${m} 出現`);
+        this.showToast(t('toastCalibrated', h, m));
     }
 
     // ================================
@@ -415,6 +496,13 @@ class SoulstoneTracker {
 
     updateAllDisplays() {
         CONFIG.MAPS.forEach(map => this.updateDisplay(map.id));
+        
+        const activeCount = Object.values(this.state).filter(s => s.nextSpawn).length;
+        const warningCount = Object.values(this.state).filter(s => s.nextSpawn && (s.nextSpawn.getTime() - new Date().getTime()) <= CONFIG.WARNING_BEFORE).length;
+        const globalStatusEl = document.getElementById('global-status');
+        if (globalStatusEl) {
+            globalStatusEl.textContent = t('globalStatusFormat', activeCount, warningCount);
+        }
     }
 
     updateDisplay(mapId) {
@@ -431,7 +519,7 @@ class SoulstoneTracker {
         if (!state.nextSpawn) {
             nextEl.textContent = '--:--:--';
             countdownEl.textContent = '--:--:--';
-            statusEl.textContent = '等待設定';
+            statusEl.textContent = t('statusWaiting');
             statusEl.className = 'map-status';
             cardEl.classList.remove('urgent', 'soon');
             this.updateCollectedBtnState(collectedBtn, state, false);
@@ -444,16 +532,25 @@ class SoulstoneTracker {
         // Calculate remaining time
         const remaining = state.nextSpawn.getTime() - now.getTime();
 
+        // 已經超過存在時間 (20分鐘)，自動將排程推到下一輪 (未撿完的 140分鐘)
+        if (remaining <= -20 * 60 * 1000) {
+            state.nextSpawn = new Date(state.nextSpawn.getTime() + 140 * 60 * 1000);
+            state.collectedUsed = false;
+            this.saveToSupabase(mapId);
+            return this.updateDisplay(mapId);
+        }
+
         // 檢查是否已過了cycleEndTime，解除「已撿完」限制
         if (state.cycleEndTime && now >= state.cycleEndTime) {
             state.collectedUsed = false;
         }
 
         if (remaining <= 0) {
-            // Spawn is active!
-            countdownEl.textContent = '馬上出現！';
+            // Spawn is active! showing the time left until despawn
+            const despawnRemaining = (20 * 60 * 1000) + remaining;
+            countdownEl.textContent = this.formatDuration(despawnRemaining);
             countdownEl.className = 'timer-countdown danger';
-            statusEl.textContent = '出現中！';
+            statusEl.textContent = t('spawning');
             statusEl.className = 'map-status danger';
             cardEl.classList.add('urgent');
             cardEl.classList.remove('soon');
@@ -463,10 +560,10 @@ class SoulstoneTracker {
             
             // 根據collectedUsed顯示狀態
             if (state.collectedUsed) {
-                statusEl.textContent = '已撿完';
+                statusEl.textContent = t('collected');
                 statusEl.className = 'map-status active';
             } else {
-                statusEl.textContent = '未撿完';
+                statusEl.textContent = t('notCollected');
                 statusEl.className = 'map-status warning';
             }
             
@@ -492,7 +589,7 @@ class SoulstoneTracker {
         if (!hasTimer || !state.nextSpawn) {
             btn.classList.remove('used', 'disabled');
             btn.disabled = false;
-            btn.textContent = '已撿完';
+            btn.textContent = t('btnCollected');
             return;
         }
 
@@ -501,12 +598,12 @@ class SoulstoneTracker {
             btn.classList.add('used');
             btn.classList.remove('disabled');
             btn.disabled = false;
-            btn.textContent = '已撿完';
+            btn.textContent = t('btnCollected');
         } else {
             // 未使用過（亮綠色）
             btn.classList.remove('used', 'disabled');
             btn.disabled = false;
-            btn.textContent = '已撿完';
+            btn.textContent = t('btnCollected');
         }
     }
 
@@ -536,18 +633,35 @@ class SoulstoneTracker {
 
         if (online) {
             dotEl.className = 'connection-dot online';
-            textEl.textContent = '已連線 (Supabase)';
+            textEl.textContent = currentLang === 'en' ? 'Online (Supabase)' : '已連線 (Supabase)';
         } else {
             dotEl.className = 'connection-dot offline';
-            textEl.textContent = '離線 (本地模式)';
+            textEl.textContent = currentLang === 'en' ? 'Offline (Local)' : '離線 (本地模式)';
         }
     }
 
     updateLastUpdated() {
-        const now = new Date();
-        const text = `最後同步：${now.toLocaleTimeString('zh-TW')}`;
+        if (!this.lastSyncTime) this.lastSyncTime = new Date();
+        const text = `${t('lastUpdated')}${this.lastSyncTime.toLocaleTimeString(currentLang === 'en' ? 'en-US' : 'zh-TW')}`;
         const el = document.getElementById('last-updated');
         if (el) el.textContent = text;
+    }
+
+    updateLanguage() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            const translation = t(key);
+            if (translation) {
+                el.textContent = translation;
+            }
+        });
+        
+        const toggleBtn = document.getElementById('lang-toggle');
+        if (toggleBtn) toggleBtn.textContent = t('langToggle');
+
+        this.updateAllDisplays();
+        this.updateConnectionStatus(this.supabase !== null);
+        this.updateLastUpdated();
     }
 
     startUpdateLoop() {
@@ -562,6 +676,19 @@ class SoulstoneTracker {
     // ================================
 
     setupEventListeners() {
+        // 語言切換 button
+        const langToggle = document.getElementById('lang-toggle');
+        if (langToggle) {
+            langToggle.addEventListener('click', () => {
+                currentLang = currentLang === 'zh' ? 'en' : 'zh';
+                localStorage.setItem('soulstone-lang', currentLang);
+                this.updateLanguage();
+            });
+        }
+
+        // 初始套用語言
+        this.updateLanguage();
+
         // 出現靈石 buttons
         document.querySelectorAll('.set-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -607,8 +734,8 @@ class SoulstoneTracker {
         const modalConfirm = document.getElementById('modal-confirm');
         const modalCancel = document.getElementById('modal-cancel');
 
-        modalMessage.textContent = '確定出現即將出現靈石的圖案再點此按鈕？';
-        modalSubMsg.innerHTML = '將自動設定為 **10分鐘後** 出現，並開始倒數計時。確認執行嗎？';
+        modalMessage.textContent = t('modalUpcomingTitle');
+        modalSubMsg.innerHTML = t('modalUpcomingSub');
 
         modal.classList.add('active');
 
@@ -616,6 +743,9 @@ class SoulstoneTracker {
         const newCancelBtn = modalCancel.cloneNode(true);
         modalConfirm.parentNode.replaceChild(newConfirmBtn, modalConfirm);
         modalCancel.parentNode.replaceChild(newCancelBtn, modalCancel);
+        
+        newConfirmBtn.textContent = t('modalConfirm');
+        newCancelBtn.textContent = t('modalCancel');
 
         newConfirmBtn.addEventListener('click', () => {
             modal.classList.remove('active');
@@ -648,8 +778,8 @@ class SoulstoneTracker {
         const baseTimeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
         const nextTimeStr = `${nextSpawnTime.getHours().toString().padStart(2,'0')}:${nextSpawnTime.getMinutes().toString().padStart(2,'0')}`;
 
-        modalMessage.textContent = '確定靈石已出現了嗎？';
-        modalSubMsg.innerHTML = `將以當下時間 <strong style="color:var(--accent-orange)">${baseTimeStr}</strong> 為起點，下次出現設定為 <strong style="color:var(--accent-gold)">${nextTimeStr}</strong>（140分後）。<br>若本輪的靈石已被採集完畢，即可按下「已撿完」將時間縮短20分鐘。`;
+        modalMessage.textContent = t('modalSpawnedTitle');
+        modalSubMsg.innerHTML = t('modalSpawnedSub', baseTimeStr, nextTimeStr);
 
         // 顯示 modal
         modal.classList.add('active');
