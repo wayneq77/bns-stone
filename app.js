@@ -363,10 +363,12 @@ class SoulstoneTracker {
             // 按下「已撿完」代表現在剛打完，下一輪將從現在起算 120 分鐘。
             mapState.nextSpawn = new Date(now.getTime() + CONFIG.COLLECTED_INTERVAL);
             mapState.cycleEndTime = mapState.nextSpawn;
+            this.showToast('✅ 採集完成！下輪出現時間：120 分鐘後');
         } else {
             // 如果是在 140 分鐘的正常循環中按下「已撿完」
             // 直接將原本預計的時間扣除 20 分鐘
             mapState.nextSpawn = new Date(mapState.nextSpawn.getTime() - (CONFIG.DEFAULT_INTERVAL - CONFIG.COLLECTED_INTERVAL));
+            this.showToast('✅ 採集完成！已縮短 20 分鐘');
         }
         
         mapState.lastUpdated = now;
@@ -494,18 +496,10 @@ class SoulstoneTracker {
             return;
         }
 
-        if (state.collectedUsed) {
-            // 已使用過
-            btn.classList.add('used');
-            btn.classList.remove('disabled');
-            btn.disabled = false;
-            btn.textContent = '✓ 已使用';
-        } else {
-            // 可以使用
-            btn.classList.remove('used', 'disabled');
-            btn.disabled = false;
-            btn.textContent = '已撿完';
-        }
+        // 始終顯示為「已撿完」，不改變為「已使用」
+        btn.classList.remove('used', 'disabled');
+        btn.disabled = false;
+        btn.textContent = '已撿完';
     }
 
     formatTime(date) {
