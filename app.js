@@ -104,6 +104,21 @@ const I18N = {
 
 let currentLang = localStorage.getItem('soulstone-lang') || 'zh';
 
+// Determine Server from Path
+function getServerFromPath() {
+    const path = window.location.pathname.replace(/\/+$/, '').substring(1).toLowerCase();
+    if (['asia1', 'ct1'].includes(path)) {
+        return path;
+    }
+    // Default fallback to asia1
+    if (window.history.replaceState) {
+        window.history.replaceState(null, '', '/asia1');
+    }
+    return 'asia1';
+}
+const currentServer = getServerFromPath();
+const currentServerLabel = currentServer === 'ct1' ? 'CT 1' : 'Asia 1';
+
 function t(key, ...args) {
     const text = I18N[currentLang][key];
     if (typeof text === 'function') {
@@ -211,6 +226,41 @@ class SoulstoneTracker {
                     },
                     (payload) => this.handleRealtimeUpdate(payload)
                 )
+                .on('broadcast', { event: 'sync' }, (payload) => {
+                    if (payload.payload) { // Supabase wraps broadcast data
+                        const rawPayload = payload.payload;
+                        if (rawPayload.mapId && rawPayload.mapId.startsWith(`${currentServer}_`)) {
+                            const localMapId = rawPayload.mapId.replace(`${currentServer}_`, '');
+                            this.state[localMapId] = {
+                                ...this.state[localMapId],
+                                ...rawPayload.data
+                            };
+                            // Parse string dates back to Date objects
+                            this.state[localMapId].nextSpawn = rawPayload.data.nextSpawn ? new Date(rawPayload.data.nextSpawn) : null;
+                            this.state[localMapId].lastUpdated = rawPayload.data.lastUpdated ? new Date(rawPayload.data.lastUpdated) : null;
+                            this.state[localMapId].cycleEndTime = rawPayload.data.cycleEndTime ? new Date(rawPayload.data.cycleEndTime) : null;
+                            this.state[localMapId].baseTime = rawPayload.data.baseTime ? new Date(rawPayload.data.baseTime) : null;
+
+                            this.updateDisplay(localMapId);
+                        }
+                    } else {
+                        // Fallback for older code version, not applying server scope
+                        const rawPayload = payload;
+                        if (rawPayload.mapId) {
+                            this.state[rawPayload.mapId] = {
+                                ...this.state[rawPayload.mapId],
+                                ...rawPayload.data
+                            };
+                            // Parse string dates back to Date objects
+                            this.state[rawPayload.mapId].nextSpawn = rawPayload.data.nextSpawn ? new Date(rawPayload.data.nextSpawn) : null;
+                            this.state[rawPayload.mapId].lastUpdated = rawPayload.data.lastUpdated ? new Date(rawPayload.data.lastUpdated) : null;
+                            this.state[rawPayload.mapId].cycleEndTime = rawPayload.data.cycleEndTime ? new Date(rawPayload.data.cycleEndTime) : null;
+                            this.state[rawPayload.mapId].baseTime = rawPayload.data.baseTime ? new Date(rawPayload.data.baseTime) : null;
+
+                            this.updateDisplay(rawPayload.mapId);
+                        }
+                    }
+                })
                 .subscribe(async (status) => {
                     if (status === 'SUBSCRIBED') {
                         this.updateConnectionStatus(true);
@@ -248,7 +298,8 @@ class SoulstoneTracker {
         try {
             const { data, error } = await this.supabase
                 .from('soulstone_timers')
-                .select('*');
+                .select('*')
+                .like('map_id', `${currentServer}_%`);
 
             if (error) {
                 console.error('Error fetching from Supabase:', error);
@@ -257,19 +308,20 @@ class SoulstoneTracker {
 
             if (data && data.length > 0) {
                 data.forEach(row => {
-                    if (this.state[row.map_id]) {
-                        this.state[row.map_id].nextSpawn = row.next_spawn ? new Date(row.next_spawn) : null;
-                        this.state[row.map_id].spawnMinutes = row.spawn_minutes || [0, 20, 40];
-                        this.state[row.map_id].lastUpdated = new Date(row.updated_at);
+                    const localMapId = row.map_id.replace(`${currentServer}_`, '');
+                    if (this.state[localMapId]) {
+                        this.state[localMapId].nextSpawn = row.next_spawn ? new Date(row.next_spawn) : null;
+                        this.state[localMapId].spawnMinutes = row.spawn_minutes || [0, 20, 40];
+                        this.state[localMapId].lastUpdated = new Date(row.updated_at);
                         // 還原額外狀態
                         if (row.collected_used !== undefined) {
-                            this.state[row.map_id].collectedUsed = row.collected_used;
+                            this.state[localMapId].collectedUsed = row.collected_used;
                         }
                         if (row.cycle_end_time) {
-                            this.state[row.map_id].cycleEndTime = new Date(row.cycle_end_time);
+                            this.state[localMapId].cycleEndTime = new Date(row.cycle_end_time);
                         }
                         if (row.base_time) {
-                            this.state[row.map_id].baseTime = new Date(row.base_time);
+                            this.state[localMapId].baseTime = new Date(row.base_time);
                         }
                     }
                 });
@@ -285,19 +337,22 @@ class SoulstoneTracker {
         const { eventType, new: newRecord } = payload;
 
         if (eventType === 'UPDATE' || eventType === 'INSERT') {
-            const mapId = newRecord.map_id;
-            if (mapId && this.state[mapId]) {
-                this.state[mapId].nextSpawn = newRecord.next_spawn ? new Date(newRecord.next_spawn) : null;
-                this.state[mapId].spawnMinutes = newRecord.spawn_minutes || [0, 20, 40];
-                this.state[mapId].lastUpdated = new Date(newRecord.updated_at);
+            const serverMapId = newRecord.map_id;
+            if (!serverMapId || !serverMapId.startsWith(`${currentServer}_`)) return;
+
+            const localMapId = serverMapId.replace(`${currentServer}_`, '');
+            if (localMapId && this.state[localMapId]) {
+                this.state[localMapId].nextSpawn = newRecord.next_spawn ? new Date(newRecord.next_spawn) : null;
+                this.state[localMapId].spawnMinutes = newRecord.spawn_minutes || [0, 20, 40];
+                this.state[localMapId].lastUpdated = new Date(newRecord.updated_at);
                 if (newRecord.collected_used !== undefined) {
-                    this.state[mapId].collectedUsed = newRecord.collected_used;
+                    this.state[localMapId].collectedUsed = newRecord.collected_used;
                 }
                 if (newRecord.cycle_end_time) {
-                    this.state[mapId].cycleEndTime = new Date(newRecord.cycle_end_time);
+                    this.state[localMapId].cycleEndTime = new Date(newRecord.cycle_end_time);
                 }
                 if (newRecord.base_time) {
-                    this.state[mapId].baseTime = new Date(newRecord.base_time);
+                    this.state[localMapId].baseTime = new Date(newRecord.base_time);
                 }
                 this.updateAllDisplays();
                 this.updateLastUpdated();
@@ -311,8 +366,9 @@ class SoulstoneTracker {
             return;
         }
 
+        const serverMapId = `${currentServer}_${mapId}`;
         const data = {
-            map_id: mapId,
+            map_id: serverMapId,
             next_spawn: this.state[mapId].nextSpawn ? this.state[mapId].nextSpawn.toISOString() : null,
             spawn_minutes: this.state[mapId].spawnMinutes,
             collected_used: this.state[mapId].collectedUsed,
@@ -330,6 +386,25 @@ class SoulstoneTracker {
                 console.error('Error saving to Supabase:', error);
                 this.saveToLocalStorage();
             }
+
+            // Broadcast
+            if (this.realtimeChannel) {
+                this.realtimeChannel.send({
+                    type: 'broadcast',
+                    event: 'sync',
+                    payload: {
+                        mapId: serverMapId,
+                        data: {
+                            nextSpawn: this.state[mapId].nextSpawn?.toISOString(),
+                            spawnMinutes: this.state[mapId].spawnMinutes,
+                            lastUpdated: this.state[mapId].lastUpdated?.toISOString(),
+                            collectedUsed: this.state[mapId].collectedUsed,
+                            cycleEndTime: this.state[mapId].cycleEndTime?.toISOString(),
+                            baseTime: this.state[mapId].baseTime ? this.state[mapId].baseTime.toISOString() : null
+                        }
+                    }
+                });
+            }
         } catch (error) {
             console.error('Failed to save to Supabase:', error);
             this.saveToLocalStorage();
@@ -346,7 +421,18 @@ class SoulstoneTracker {
             if (saved) {
                 const data = JSON.parse(saved);
                 CONFIG.MAPS.forEach(map => {
-                    if (data[map.id]) {
+                    const serverMapId = `${currentServer}_${map.id}`;
+                    if (data.maps && data.maps[serverMapId]) {
+                        this.state[map.id] = {
+                            ...this.state[map.id],
+                            ...data.maps[serverMapId],
+                            nextSpawn: data.maps[serverMapId].nextSpawn ? new Date(data.maps[serverMapId].nextSpawn) : null,
+                            lastUpdated: data.maps[serverMapId].lastUpdated ? new Date(data.maps[serverMapId].lastUpdated) : null,
+                            cycleEndTime: data.maps[serverMapId].cycleEndTime ? new Date(data.maps[serverMapId].cycleEndTime) : null,
+                            baseTime: data.maps[serverMapId].baseTime ? new Date(data.maps[serverMapId].baseTime) : null
+                        };
+                    } else if (data[map.id]) {
+                        // Legacy support without server prefix (migrate it)
                         this.state[map.id] = {
                             ...this.state[map.id],
                             ...data[map.id],
@@ -366,9 +452,17 @@ class SoulstoneTracker {
 
     saveToLocalStorage() {
         try {
-            const data = { maps: {} };
+            // Fetch existing so we don't overwrite other servers
+            const existing = localStorage.getItem('soulstone-tracker-data');
+            let data = { maps: {} };
+            if (existing) {
+                const parsed = JSON.parse(existing);
+                if (parsed.maps) data = parsed;
+            }
+
             CONFIG.MAPS.forEach(map => {
-                data.maps[map.id] = {
+                const serverMapId = `${currentServer}_${map.id}`;
+                data.maps[serverMapId] = {
                     nextSpawn: this.state[map.id].nextSpawn,
                     spawnMinutes: this.state[map.id].spawnMinutes,
                     lastUpdated: this.state[map.id].lastUpdated,
@@ -652,12 +746,20 @@ class SoulstoneTracker {
             const key = el.getAttribute('data-i18n');
             const translation = t(key);
             if (translation) {
-                el.textContent = translation;
+                // Ignore title, handled below
+                if (key !== 'title') el.textContent = translation;
             }
         });
         
         const toggleBtn = document.getElementById('lang-toggle');
         if (toggleBtn) toggleBtn.textContent = t('langToggle');
+
+        // Update Title with Server Info
+        document.title = `${currentServerLabel} | ${t('title')}`;
+        const logoText = document.querySelector('.logo-text');
+        if (logoText) {
+            logoText.textContent = `${t('title')} (${currentServerLabel})`;
+        }
 
         this.updateAllDisplays();
         this.updateConnectionStatus(this.supabase !== null);
