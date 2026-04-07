@@ -496,10 +496,18 @@ class SoulstoneTracker {
             return;
         }
 
-        // 始終顯示為「已撿完」，不改變為「已使用」
-        btn.classList.remove('used', 'disabled');
-        btn.disabled = false;
-        btn.textContent = '已撿完';
+        if (state.collectedUsed) {
+            // 已使用過（按鈕變暗，但維持文字）
+            btn.classList.add('used');
+            btn.classList.remove('disabled');
+            btn.disabled = false;
+            btn.textContent = '已撿完';
+        } else {
+            // 未使用過（亮綠色）
+            btn.classList.remove('used', 'disabled');
+            btn.disabled = false;
+            btn.textContent = '已撿完';
+        }
     }
 
     formatTime(date) {
