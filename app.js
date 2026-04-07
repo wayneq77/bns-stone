@@ -68,7 +68,9 @@ const I18N = {
         'modalCancel': '取消',
         'statusWaiting': '等待設定',
         'globalStatusFormat': (active, warning) => `目前狀態：${active} 個出現中，${warning} 個即將出現`,
-        'lastUpdated': '最後同步：'
+        'lastUpdated': '最後同步：',
+        'alarmOn': '警報開啟',
+        'alarmOff': '警報已關閉'
     },
     'en': {
         'title': 'Soulstone Tracker',
@@ -104,7 +106,9 @@ const I18N = {
         'modalCancel': 'Cancel',
         'statusWaiting': 'Pending',
         'globalStatusFormat': (active, warning) => `Status: ${active} active, ${warning} upcoming`,
-        'lastUpdated': 'Last sync: '
+        'lastUpdated': 'Last sync: ',
+        'alarmOn': 'Alarm ON',
+        'alarmOff': 'Alarm OFF'
     }
 };
 
@@ -141,6 +145,8 @@ class SoulstoneTracker {
         this.supabase = null;
         this.realtimeChannel = null;
         this.updateIntervals = {};
+        this.alarmEnabled = localStorage.getItem('soulstone-alarm-enabled') === 'true';
+        this.alarmState = {}; // 紀錄已經響過的 mapId
 
         this.init();
     }
@@ -624,6 +630,17 @@ class SoulstoneTracker {
         // Calculate remaining time
         const remaining = state.nextSpawn.getTime() - now.getTime();
 
+        // 檢查並觸發音效警報 (剩餘時間 <= 警告時間)
+        if (remaining <= CONFIG.WARNING_BEFORE && remaining > 0) {
+            if (!this.alarmState[mapId]) {
+                this.alarmState[mapId] = true;
+                this.playAlarm();
+            }
+        } else if (remaining > CONFIG.WARNING_BEFORE) {
+            // 已被重置到未來，重新解鎖警報
+            this.alarmState[mapId] = false;
+        }
+
         // 已經超過存在時間 (20分鐘)，自動將排程推到下一輪 (未撿完的 140分鐘)
         if (remaining <= -20 * 60 * 1000) {
             state.nextSpawn = new Date(state.nextSpawn.getTime() + 140 * 60 * 1000);
@@ -762,6 +779,46 @@ class SoulstoneTracker {
         this.updateAllDisplays();
         this.updateConnectionStatus(this.supabase !== null);
         this.updateLastUpdated();
+        this.updateAlarmBtn(document.getElementById('alarm-toggle'));
+    }
+
+    updateAlarmBtn(btn) {
+        if (!btn) return;
+        btn.textContent = this.alarmEnabled ? '🔔' : '🔕';
+        btn.style.background = this.alarmEnabled ? 'var(--accent-orange)' : '#374151';
+        btn.title = this.alarmEnabled ? t('alarmOn') : t('alarmOff');
+    }
+
+    playAlarm() {
+        if (!this.alarmEnabled) return;
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            
+            // 產生一個清脆的雙聲提示音效 ("Ding-Dong")
+            const playTone = (freq, startTime, duration) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, startTime);
+                
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            };
+
+            const now = ctx.currentTime;
+            playTone(880, now, 0.5);       // A5
+            playTone(1108.73, now + 0.15, 0.5); // C#6
+        } catch (e) {
+            console.error('Audio play failed', e);
+        }
     }
 
     startUpdateLoop() {
@@ -776,6 +833,20 @@ class SoulstoneTracker {
     // ================================
 
     setupEventListeners() {
+        // 警報切換 button
+        const alarmToggle = document.getElementById('alarm-toggle');
+        if (alarmToggle) {
+            this.updateAlarmBtn(alarmToggle);
+            alarmToggle.addEventListener('click', () => {
+                this.alarmEnabled = !this.alarmEnabled;
+                localStorage.setItem('soulstone-alarm-enabled', this.alarmEnabled);
+                this.updateAlarmBtn(alarmToggle);
+                
+                // 開啟時立刻試播一聲讓玩家確認音量
+                if (this.alarmEnabled) this.playAlarm();
+            });
+        }
+
         // 語言切換 button
         const langToggle = document.getElementById('lang-toggle');
         if (langToggle) {
