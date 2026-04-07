@@ -647,7 +647,7 @@ class SoulstoneTracker {
         const nextTimeStr = `${nextSpawnTime.getHours().toString().padStart(2,'0')}:${nextSpawnTime.getMinutes().toString().padStart(2,'0')}`;
 
         modalMessage.textContent = '確定靈石已出現了嗎？';
-        modalSubMsg.innerHTML = `將以當下時間 <strong style="color:var(--accent-orange)">${baseTimeStr}</strong> 為起點，下次出現設定為 <strong style="color:var(--accent-gold)">${nextTimeStr}</strong>（140分後）。<br>打完如果有撿到靈石，即可按下「已撿完」將時間縮短20分鐘。`;
+        modalSubMsg.innerHTML = `將以當下時間 <strong style="color:var(--accent-orange)">${baseTimeStr}</strong> 為起點，下次出現設定為 <strong style="color:var(--accent-gold)">${nextTimeStr}</strong>（140分後）。<br>若本輪的靈石已被採集完畢，即可按下「已撿完」將時間縮短20分鐘。`;
 
         // 顯示 modal
         modal.classList.add('active');
