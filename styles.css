@@ -357,6 +357,35 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
+.timer-value-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.adjust-btns {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-adjust {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-adjust:hover {
+    background: var(--text-secondary);
+    color: var(--bg-card);
+}
+
 .timer-countdown {
     font-size: 1.65rem; /* +50% from 1.1rem */
     font-weight: 900;

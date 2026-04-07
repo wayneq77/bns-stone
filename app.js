@@ -304,27 +304,25 @@ class SoulstoneTracker {
     }
 
     // ================================
-    // 時間計算邏輯
+    // 時間計算與調整邏輯
     // ================================
 
-    /**
-     * 根據當前分鐘數，計算基準時間
-     * 0~19分 → 0分, 20~39分 → 20分, 40~59分 → 40分
-     */
-    calculateBaseTime(date = new Date()) {
-        const minutes = date.getMinutes();
-        let baseMinute = 0;
-        
-        if (minutes >= 40) {
-            baseMinute = 40;
-        } else if (minutes >= 20) {
-            baseMinute = 20;
+    adjustTime(mapId, minutesToAdd) {
+        const state = this.state[mapId];
+        if (!state.nextSpawn) {
+            this.showToast('尚未設定時間，無法微調');
+            return;
         }
-        // else baseMinute = 0
+
+        const msToAdd = minutesToAdd * 60 * 1000;
+        state.nextSpawn = new Date(state.nextSpawn.getTime() + msToAdd);
+        if (state.cycleEndTime) {
+            state.cycleEndTime = new Date(state.cycleEndTime.getTime() + msToAdd);
+        }
+        state.lastUpdated = new Date();
         
-        const result = new Date(date);
-        result.setMinutes(baseMinute, 0, 0);
-        return result;
+        this.saveToSupabase(mapId);
+        this.updateDisplay(mapId);
     }
 
     /**
@@ -332,12 +330,10 @@ class SoulstoneTracker {
      */
     setSpawnTime(mapId) {
         const now = new Date();
-        const baseTime = this.calculateBaseTime(now);
         
-        this.state[mapId].baseTime = baseTime;
         this.state[mapId].collectedUsed = false; // 重置已撿完狀態
-        this.state[mapId].cycleEndTime = new Date(baseTime.getTime() + CONFIG.DEFAULT_INTERVAL);
-        this.state[mapId].nextSpawn = new Date(baseTime.getTime() + CONFIG.DEFAULT_INTERVAL);
+        this.state[mapId].cycleEndTime = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
+        this.state[mapId].nextSpawn = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
         this.state[mapId].lastUpdated = now;
 
         this.saveToSupabase(mapId);
@@ -359,12 +355,8 @@ class SoulstoneTracker {
         // 標記已使用
         mapState.collectedUsed = true;
 
-        // 計算下次出現時間：
-        // 若有 baseTime → baseTime + 120min
-        // 若無 baseTime（即將出現靈石模式）→ 現有 nextSpawn - 20min
-        if (mapState.baseTime) {
-            mapState.nextSpawn = new Date(mapState.baseTime.getTime() + CONFIG.COLLECTED_INTERVAL);
-        } else if (mapState.nextSpawn) {
+        // 直接把目前的下次出現時間提早 20 分鐘
+        if (mapState.nextSpawn) {
             mapState.nextSpawn = new Date(mapState.nextSpawn.getTime() - (CONFIG.DEFAULT_INTERVAL - CONFIG.COLLECTED_INTERVAL));
         }
         mapState.lastUpdated = new Date();
@@ -386,35 +378,22 @@ class SoulstoneTracker {
     }
 
     /**
-     * 校正到下一個區間（收到遊戲提醒時使用）
-     * 0~19分 → 下次出現在 :20
-     * 20~39分 → 下次出現在 :40
-     * 40~59分 → 下次出現在 下一小時 :00
+     * 接獲即將出現提醒，設定為 10 分鐘後出現
      */
     setNextIntervalTime(mapId) {
         const now = new Date();
-        const minutes = now.getMinutes();
-        const nextTime = new Date(now);
-
-        if (minutes < 20) {
-            nextTime.setMinutes(20, 0, 0);
-        } else if (minutes < 40) {
-            nextTime.setMinutes(40, 0, 0);
-        } else {
-            nextTime.setHours(nextTime.getHours() + 1, 0, 0, 0);
-        }
-
-        this.state[mapId].nextSpawn = nextTime;
+        
         this.state[mapId].collectedUsed = false;
-        this.state[mapId].cycleEndTime = nextTime; // 這輪結束於下次出現
-        this.state[mapId].baseTime = null;
+        // 直接從按下時設定為 10 分鐘後出現
+        this.state[mapId].nextSpawn = new Date(now.getTime() + 10 * 60 * 1000);
+        this.state[mapId].cycleEndTime = this.state[mapId].nextSpawn;
         this.state[mapId].lastUpdated = now;
 
         this.saveToSupabase(mapId);
         this.updateDisplay(mapId);
 
-        const h = nextTime.getHours().toString().padStart(2, '0');
-        const m = nextTime.getMinutes().toString().padStart(2, '0');
+        const h = this.state[mapId].nextSpawn.getHours().toString().padStart(2, '0');
+        const m = this.state[mapId].nextSpawn.getMinutes().toString().padStart(2, '0');
         this.showToast(`🔔 校正完成：靈石將於 ${h}:${m} 出現`);
     }
 
@@ -587,6 +566,15 @@ class SoulstoneTracker {
             });
         });
 
+        // 時間微調 buttons
+        document.querySelectorAll('.btn-adjust').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const mapId = e.currentTarget.dataset.map;
+                const amount = parseInt(e.currentTarget.dataset.amount, 10);
+                this.adjustTime(mapId, amount);
+            });
+        });
+
         // 已撿完 buttons
         document.querySelectorAll('.collected-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -608,7 +596,7 @@ class SoulstoneTracker {
         const modalCancel = document.getElementById('modal-cancel');
 
         modalMessage.textContent = '確定出現即將出現靈石的圖案再點此按鈕？';
-        modalSubMsg.innerHTML = '將自動對齊到最近的一輪時間，並開始計算。確認執行嗎？';
+        modalSubMsg.innerHTML = '將自動設定為 **10分鐘後** 出現，並開始倒數計時。確認執行嗎？';
 
         modal.classList.add('active');
 
