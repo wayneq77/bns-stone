@@ -282,9 +282,9 @@ body {
 }
 
 .map-icon {
-    font-size: 1.2rem;
-    width: 28px;
-    height: 28px;
+    font-size: 2.4rem;
+    width: 56px;
+    height: 56px;
     display: flex;
     align-items: center;
     justify-content: center;
