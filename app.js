@@ -104,22 +104,22 @@ const I18N = {
 
 let currentLang = localStorage.getItem('soulstone-lang') || 'zh';
 
-// Determine Server from Path dynamically
+// Determine Server from Path (only allow asia1 and ct1)
+const ALLOWED_SERVERS = ['asia1', 'ct1'];
+
 function getServerFromPath() {
     const path = window.location.pathname.replace(/\/+$/, '').substring(1).toLowerCase();
     
-    // 如果沒有輸入後綴 (根目錄)，直接顯示找不到網頁 (404)
-    if (!path) {
+    // 沒有輸入後綴，或不在允許清單內 → 404
+    if (!path || !ALLOWED_SERVERS.includes(path)) {
         document.body.innerHTML = '<div style="display:flex; height:100vh; align-items:center; justify-content:center; flex-direction:column; color:white;"><h1 style="font-size:3rem; margin:0;">404</h1><p>Server Not Found / 找不到伺服器</p></div>';
-        throw new Error('No server specified'); // Stop further execution
+        throw new Error('Invalid server');
     }
     
-    // 完全動態：你輸入什麼網址後綴，這台就是什麼伺服器！
     return path;
 }
 const currentServer = getServerFromPath();
-// 將首字大寫作為顯示名稱，例如 'asia1' -> 'Asia1'
-const currentServerLabel = currentServer.charAt(0).toUpperCase() + currentServer.slice(1);
+const currentServerLabel = currentServer === 'ct1' ? 'CT 1' : 'Asia 1';
 
 function t(key, ...args) {
     const text = I18N[currentLang][key];
