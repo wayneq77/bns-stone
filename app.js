@@ -42,6 +42,7 @@ const I18N = {
         'active': '已出現',
         'spawning': '已出現',
         'despawning': '消失倒數',
+        'statusUpcoming': '即將出現',
         'collected': '已撿完',
         'notCollected': '未撿完',
         'btnSpawned': '已出現靈石',
@@ -82,6 +83,7 @@ const I18N = {
         'active': 'Spawned',
         'spawning': 'Spawned',
         'despawning': 'Despawning in',
+        'statusUpcoming': 'Upcoming',
         'collected': 'Collected',
         'notCollected': 'Unknown',
         'btnSpawned': 'Spawned',
@@ -683,6 +685,9 @@ class SoulstoneTracker {
             if (state.collectedUsed) {
                 statusEl.textContent = t('collected');
                 statusEl.className = 'map-status active';
+            } else if (remaining <= CONFIG.WARNING_BEFORE) {
+                statusEl.textContent = t('statusUpcoming');
+                statusEl.className = 'map-status danger';
             } else {
                 statusEl.textContent = t('notCollected');
                 statusEl.className = 'map-status warning';
