@@ -65,7 +65,10 @@ const I18N = {
         // toggle
         'langToggle': 'English',
         'modalConfirm': '確定',
-        'modalCancel': '取消'
+        'modalCancel': '取消',
+        'statusWaiting': '等待設定',
+        'globalStatusFormat': (active, warning) => `目前狀態：${active} 個出現中，${warning} 個即將出現`,
+        'lastUpdated': '最後同步：'
     },
     'en': {
         'title': 'Soulstone Tracker',
@@ -98,7 +101,10 @@ const I18N = {
         'modalUpcomingSub': 'This will set the spawn time to exactly **10 minutes from now**. Confirm?',
         'langToggle': '繁體中文',
         'modalConfirm': 'Confirm',
-        'modalCancel': 'Cancel'
+        'modalCancel': 'Cancel',
+        'statusWaiting': 'Pending',
+        'globalStatusFormat': (active, warning) => `Status: ${active} active, ${warning} upcoming`,
+        'lastUpdated': 'Last sync: '
     }
 };
 
