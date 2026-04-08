@@ -118,8 +118,8 @@ const I18N = {
 
 let currentLang = localStorage.getItem('soulstone-lang') || 'zh';
 
-// Determine Server from Path (only allow asia1)
-const ALLOWED_SERVERS = ['asia1'];
+// Determine Server from Path (allow asia1 and ct1)
+const ALLOWED_SERVERS = ['asia1', 'ct1'];
 
 function getServerFromPath() {
     const path = window.location.pathname.replace(/\/+$/, '').substring(1).toLowerCase();
