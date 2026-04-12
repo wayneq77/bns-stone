@@ -489,6 +489,27 @@ class SoulstoneTracker {
     // 時間計算與調整邏輯
     // ================================
 
+    /**
+     * 將時間對齊至最近的 20 分鐘標記 (:00, :20, :40) 且秒數歸零
+     * 這符合遊戲中靈石谷/要塞 140m 或 120m 的循環規律
+     */
+    snapToGamerCycle(date) {
+        if (!date) return null;
+        const snapped = new Date(date);
+        snapped.setSeconds(0);
+        snapped.setMilliseconds(0);
+        
+        const minutes = snapped.getMinutes();
+        const remainder = minutes % 20;
+        
+        if (remainder < 10) {
+            snapped.setMinutes(minutes - remainder);
+        } else {
+            snapped.setMinutes(minutes + (20 - remainder));
+        }
+        return snapped;
+    }
+
     adjustTime(mapId, minutesToAdd) {
         const state = this.state[mapId];
         if (!state.nextSpawn) {
@@ -509,14 +530,21 @@ class SoulstoneTracker {
     }
 
     /**
-     * 設定出現靈石（重新計算這輪的基準時間和下次出現時間）
+     * 設定出現靈石（靈石「現在」出現）
+     * 將 nextSpawn 設為「現在」，讓畫面立即進入「消失倒數 20 分鐘」模式。
+     * 20 分鐘後，updateDisplay 的自動推算邏輯會接手：
+     *   nextSpawn += 140m → 進入「等待下一輪」倒數。
+     * cycleEndTime 記錄本輪的預期結束時間，供 markCollected 計算用。
      */
     setSpawnTime(mapId) {
         const now = new Date();
         
         this.state[mapId].collectedUsed = false; // 重置已撿完狀態
+        // 靈石現在出現，畫面應顯示「消失倒數」，所以 nextSpawn = 現在
+        // 20 分鐘後自動 auto-advance 到 now + 140m
+        this.state[mapId].nextSpawn = now;
+        // cycleEndTime 記錄整輪結束時間（用於 markCollected 判斷已撿完限制）
         this.state[mapId].cycleEndTime = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
-        this.state[mapId].nextSpawn = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
         this.state[mapId].lastUpdated = now;
 
         this.saveToSupabase(mapId);
@@ -525,6 +553,13 @@ class SoulstoneTracker {
 
     /**
      * 已撿完按鈕（縮短下次出現時間，每輪只能執行一次）
+     * 
+     * nextSpawn 的意義：
+     *  - 靈石出現中：nextSpawn = 出現時間（remaining 為負）
+     *  - 等待中：nextSpawn = 下輪出現時間（remaining 為正）
+     *  - auto-advance 後：nextSpawn = 出現時間 + 140m
+     * 
+     * 已撿完邏輯：下輪出現 = 出現時間 + 120m
      */
     markCollected(mapId) {
         const mapState = this.state[mapId];
@@ -539,18 +574,20 @@ class SoulstoneTracker {
         mapState.collectedUsed = true;
 
         const now = new Date();
-        const remaining = mapState.nextSpawn.getTime() - now.getTime();
+        const scheduledSpawn = mapState.nextSpawn;
+        const remaining = scheduledSpawn.getTime() - now.getTime();
 
         if (remaining <= 30 * 60 * 1000) {
-            // 如果是在「即將出現」(10m)的預估階段，或是靈石已出現(remaining <= 0)
-            // 按下「已撿完」代表現在剛打完，下一輪將從現在起算 120 分鐘。
-            mapState.nextSpawn = new Date(now.getTime() + CONFIG.COLLECTED_INTERVAL);
+            // 靈石出現中（remaining <= 0）或即將出現（remaining 在 30m 內）
+            // scheduledSpawn = 出現時間，nextSpawn = 出現時間 + 120m
+            // 這樣算出的「下次出現」不會因為玩家晚按而飄移
+            mapState.nextSpawn = new Date(scheduledSpawn.getTime() + CONFIG.COLLECTED_INTERVAL);
             mapState.cycleEndTime = mapState.nextSpawn;
             this.showToast(t('toastCollected'));
         } else {
-            // 如果是在 140 分鐘的正常循環中按下「已撿完」
-            // 直接將原本預計的時間扣除 20 分鐘
-            mapState.nextSpawn = new Date(mapState.nextSpawn.getTime() - (CONFIG.DEFAULT_INTERVAL - CONFIG.COLLECTED_INTERVAL));
+            // 等待中（remaining > 30m）── 正常 140m 循環
+            // 直接將原本預計的時間扣除 20 分鐘 (140 - 120 = 20)
+            mapState.nextSpawn = new Date(scheduledSpawn.getTime() - (CONFIG.DEFAULT_INTERVAL - CONFIG.COLLECTED_INTERVAL));
             this.showToast(t('toastShorten'));
         }
         
@@ -574,12 +611,13 @@ class SoulstoneTracker {
 
     /**
      * 接獲即將出現提醒，設定為 10 分鐘後出現
+     * 注意：不 snap，保留地圖的自然偏移量，讓遊戲實際時間與追蹤器同步
      */
     setNextIntervalTime(mapId) {
         const now = new Date();
         
         this.state[mapId].collectedUsed = false;
-        // 直接從按下時設定為 10 分鐘後出現
+        // 不做 snap，直接設定為 10 分鐘後，避免破壞 :02/:22/:42 之類的偏移
         this.state[mapId].nextSpawn = new Date(now.getTime() + 10 * 60 * 1000);
         this.state[mapId].cycleEndTime = this.state[mapId].nextSpawn;
         this.state[mapId].lastUpdated = now;
@@ -589,7 +627,7 @@ class SoulstoneTracker {
 
         const h = this.state[mapId].nextSpawn.getHours().toString().padStart(2, '0');
         const m = this.state[mapId].nextSpawn.getMinutes().toString().padStart(2, '0');
-        this.showToast(t('toastCalibrated', h, m));
+        this.showToast(t('toastReset', h, m));
     }
 
     // ================================
