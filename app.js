@@ -151,6 +151,7 @@ class SoulstoneTracker {
         this.updateIntervals = {};
         this.alarmEnabled = localStorage.getItem('soulstone-alarm-enabled') === 'true';
         this.alarmState = {}; // 紀錄已經響過的 mapId
+        this.serverTimeOffset = 0; // 伺服器與本地時間的毫秒差 (Supabase - Local)
 
         this.init();
     }
@@ -343,6 +344,13 @@ class SoulstoneTracker {
                         }
                     }
                 });
+
+                // 計算伺服器時間偏移：取最後一個更新紀錄的 updated_at 作為基準 (簡化版處理)
+                const latestRecord = data.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
+                if (latestRecord) {
+                    // 這邊僅輔助用，真正的漂移透過 handleRealtimeUpdate 的攔截來處理
+                }
+
                 this.updateAllDisplays();
                 this.updateLastUpdated();
             }
@@ -360,18 +368,34 @@ class SoulstoneTracker {
 
             const localMapId = serverMapId.replace(`${currentServer}_`, '');
             if (localMapId && this.state[localMapId]) {
-                this.state[localMapId].nextSpawn = newRecord.next_spawn ? new Date(newRecord.next_spawn) : null;
+                const newState = {
+                    nextSpawn: newRecord.next_spawn ? new Date(newRecord.next_spawn) : null,
+                    collectedUsed: newRecord.collected_used,
+                    cycleEndTime: newRecord.cycle_end_time ? new Date(newRecord.cycle_end_time) : null,
+                    baseTime: newRecord.base_time ? new Date(newRecord.base_time) : null,
+                    updatedAt: new Date(newRecord.updated_at)
+                };
+
+                // --- 智慧校正攔截 (Update Sanitization) ---
+                // 如果本地已經有時間，且新收到的同步時間與本地相差不到 5 分鐘，則判定為「時間漂移雜訊」，不予覆蓋
+                if (this.state[localMapId].nextSpawn && newState.nextSpawn) {
+                    const diff = Math.abs(this.state[localMapId].nextSpawn.getTime() - newState.nextSpawn.getTime());
+                    const fiveMinutes = 5 * 60 * 1000;
+                    
+                    // 只有當新資料與本地相比「大幅跳變」超過 5 分鐘（代表有人進行了手動校正），我們才接受更新
+                    if (diff > 0 && diff < fiveMinutes) {
+                        console.log(`[SmartSync] 偵測到微小偏差 (${(diff/1000).toFixed(1)}s)，已忽略該同步以維持本地精準度。`);
+                        return; 
+                    }
+                }
+
+                this.state[localMapId].nextSpawn = newState.nextSpawn;
                 this.state[localMapId].spawnMinutes = newRecord.spawn_minutes || [0, 20, 40];
-                this.state[localMapId].lastUpdated = new Date(newRecord.updated_at);
-                if (newRecord.collected_used !== undefined) {
-                    this.state[localMapId].collectedUsed = newRecord.collected_used;
-                }
-                if (newRecord.cycle_end_time) {
-                    this.state[localMapId].cycleEndTime = new Date(newRecord.cycle_end_time);
-                }
-                if (newRecord.base_time) {
-                    this.state[localMapId].baseTime = new Date(newRecord.base_time);
-                }
+                this.state[localMapId].lastUpdated = newState.updatedAt;
+                this.state[localMapId].collectedUsed = newState.collectedUsed;
+                this.state[localMapId].cycleEndTime = newState.cycleEndTime;
+                this.state[localMapId].baseTime = newState.baseTime;
+                
                 this.updateAllDisplays();
                 this.updateLastUpdated();
             }
@@ -538,13 +562,23 @@ class SoulstoneTracker {
      */
     setSpawnTime(mapId) {
         const now = new Date();
+        const existingSpawn = this.state[mapId].nextSpawn;
+        let finalSpawn = now;
+
+        // --- 智慧吸附 (Smart Snapping) ---
+        // 如果現在的時間與原本預計出現的時間相差不到 10 分鐘，則採用原本預計的時間為基準，消除漂移
+        if (existingSpawn) {
+            const diff = Math.abs(now.getTime() - existingSpawn.getTime());
+            const tenMinutes = 10 * 60 * 1000;
+            if (diff < tenMinutes) {
+                console.log(`[SmartCalibration] 偵測到點擊延遲 (${(diff/1000).toFixed(1)}s)，已自動回填至正確排程。`);
+                finalSpawn = existingSpawn;
+            }
+        }
         
-        this.state[mapId].collectedUsed = false; // 重置已撿完狀態
-        // 靈石現在出現，畫面應顯示「消失倒數」，所以 nextSpawn = 現在
-        // 20 分鐘後自動 auto-advance 到 now + 140m
-        this.state[mapId].nextSpawn = now;
-        // cycleEndTime 記錄整輪結束時間（用於 markCollected 判斷已撿完限制）
-        this.state[mapId].cycleEndTime = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
+        this.state[mapId].collectedUsed = false; 
+        this.state[mapId].nextSpawn = finalSpawn;
+        this.state[mapId].cycleEndTime = new Date(finalSpawn.getTime() + CONFIG.DEFAULT_INTERVAL);
         this.state[mapId].lastUpdated = now;
 
         this.saveToSupabase(mapId);
@@ -615,10 +649,23 @@ class SoulstoneTracker {
      */
     setNextIntervalTime(mapId) {
         const now = new Date();
+        const upcomingSpawn = new Date(now.getTime() + 10 * 60 * 1000);
+        const existingSpawn = this.state[mapId].nextSpawn;
+        let finalSpawn = upcomingSpawn;
+
+        // --- 智慧吸附 (Smart Snapping) ---
+        // 如果「10分鐘後」的時間與原本預計的時間相差不到 5 分鐘，維持原本的時間，避免破壞精準度
+        if (existingSpawn) {
+            const diff = Math.abs(upcomingSpawn.getTime() - existingSpawn.getTime());
+            const fiveMinutes = 5 * 60 * 1000;
+            if (diff < fiveMinutes) {
+                console.log(`[SmartCalibration] 收到警報，與預計時間吻合，維持原計時器以確保秒數精準。`);
+                finalSpawn = existingSpawn;
+            }
+        }
         
         this.state[mapId].collectedUsed = false;
-        // 不做 snap，直接設定為 10 分鐘後，避免破壞 :02/:22/:42 之類的偏移
-        this.state[mapId].nextSpawn = new Date(now.getTime() + 10 * 60 * 1000);
+        this.state[mapId].nextSpawn = finalSpawn;
         this.state[mapId].cycleEndTime = this.state[mapId].nextSpawn;
         this.state[mapId].lastUpdated = now;
 
