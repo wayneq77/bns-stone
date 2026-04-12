@@ -377,16 +377,22 @@ class SoulstoneTracker {
                 };
 
                 // --- 智慧校正攔截 (Update Sanitization) ---
-                // 如果本地已經有時間，且新收到的同步時間與本地相差不到 5 分鐘，則判定為「時間漂移雜訊」，不予覆蓋
-                if (this.state[localMapId].nextSpawn && newState.nextSpawn) {
+                // 如果是「手動校準 (isManual)」，則無視任何過濾規則，絕對優先採用
+                const isManual = !!(payload.payload?.isManual || payload.isManual);
+                
+                if (this.state[localMapId].nextSpawn && newState.nextSpawn && !isManual) {
                     const diff = Math.abs(this.state[localMapId].nextSpawn.getTime() - newState.nextSpawn.getTime());
                     const fiveMinutes = 5 * 60 * 1000;
                     
                     // 只有當新資料與本地相比「大幅跳變」超過 5 分鐘（代表有人進行了手動校正），我們才接受更新
                     if (diff > 0 && diff < fiveMinutes) {
-                        console.log(`[SmartSync] 偵測到微小偏差 (${(diff/1000).toFixed(1)}s)，已忽略該同步以維持本地精準度。`);
+                        console.log(`[SmartSync] 偵測到微小偏差 (${(diff/1000).toFixed(1)}s)，判定為時鐘雜訊，已忽略該同步。`);
                         return; 
                     }
+                }
+
+                if (isManual) {
+                    console.log(`[SmartSync] 收到權威手動更新 (${localMapId})，強制覆蓋。`);
                 }
 
                 this.state[localMapId].nextSpawn = newState.nextSpawn;
@@ -402,7 +408,7 @@ class SoulstoneTracker {
         }
     }
 
-    async saveToSupabase(mapId) {
+    async saveToSupabase(mapId, isManual = false) {
         if (!this.supabase) {
             this.saveToLocalStorage();
             return;
@@ -436,6 +442,7 @@ class SoulstoneTracker {
                     event: 'sync',
                     payload: {
                         mapId: serverMapId,
+                        isManual: isManual,
                         data: {
                             nextSpawn: this.state[mapId].nextSpawn?.toISOString(),
                             spawnMinutes: this.state[mapId].spawnMinutes,
@@ -548,7 +555,7 @@ class SoulstoneTracker {
         }
         state.lastUpdated = new Date();
         
-        this.saveToSupabase(mapId);
+        this.saveToSupabase(mapId, true);
         this.updateDisplay(mapId);
         this.showToast(t('toastAdjusted'));
     }
@@ -581,7 +588,7 @@ class SoulstoneTracker {
         this.state[mapId].cycleEndTime = new Date(finalSpawn.getTime() + CONFIG.DEFAULT_INTERVAL);
         this.state[mapId].lastUpdated = now;
 
-        this.saveToSupabase(mapId);
+        this.saveToSupabase(mapId, true);
         this.updateDisplay(mapId);
     }
 
@@ -627,7 +634,7 @@ class SoulstoneTracker {
         
         mapState.lastUpdated = now;
 
-        this.saveToSupabase(mapId);
+        this.saveToSupabase(mapId, true);
         this.updateDisplay(mapId);
         return true;
     }
@@ -639,7 +646,7 @@ class SoulstoneTracker {
         this.state[mapId].baseTime = null;
         this.state[mapId].lastUpdated = new Date();
 
-        this.saveToSupabase(mapId);
+        this.saveToSupabase(mapId, true);
         this.updateDisplay(mapId);
     }
 
@@ -669,7 +676,7 @@ class SoulstoneTracker {
         this.state[mapId].cycleEndTime = this.state[mapId].nextSpawn;
         this.state[mapId].lastUpdated = now;
 
-        this.saveToSupabase(mapId);
+        this.saveToSupabase(mapId, true);
         this.updateDisplay(mapId);
 
         const h = this.state[mapId].nextSpawn.getHours().toString().padStart(2, '0');
@@ -735,7 +742,8 @@ class SoulstoneTracker {
         if (remaining <= -20 * 60 * 1000) {
             state.nextSpawn = new Date(state.nextSpawn.getTime() + 140 * 60 * 1000);
             state.collectedUsed = false;
-            this.saveToSupabase(mapId);
+            // 自動進位標記為非手動，防止覆蓋其他裝置的新進度
+            this.saveToSupabase(mapId, false);
             return this.updateDisplay(mapId);
         }
 
