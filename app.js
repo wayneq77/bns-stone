@@ -152,6 +152,7 @@ class SoulstoneTracker {
         this.alarmEnabled = localStorage.getItem('soulstone-alarm-enabled') === 'true';
         this.alarmState = {}; // 紀錄已經響過的 mapId
         this.serverTimeOffset = 0; // 伺服器與本地時間的毫秒差 (Supabase - Local)
+        this.lastSyncTime = null;
 
         this.init();
     }
@@ -226,6 +227,38 @@ class SoulstoneTracker {
                 setTimeout(doInit, 1000);
             }
         }
+    }
+
+    /**
+     * 同步伺服器時間校準
+     * 透過讀取 Supabase 的 HTTP Header 中的 Date 欄位來獲取權威系統時間
+     */
+    async syncServerTime() {
+        if (!CONFIG.SUPABASE_URL) return;
+        try {
+            const start = Date.now();
+            // 使用 HEAD 請求最省流量，僅為了拿 Header
+            const response = await fetch(CONFIG.SUPABASE_URL, { method: 'HEAD' });
+            const serverDateStr = response.headers.get('Date');
+            if (serverDateStr) {
+                const serverTime = new Date(serverDateStr).getTime();
+                const now = Date.now();
+                // 補償網路往返時間 (RTT) 的一半
+                const rttOffset = (now - start) / 2;
+                this.serverTimeOffset = (serverTime + rttOffset) - now;
+                this.lastSyncTime = this.getCurrentServerTime();
+                console.log(`[ClockSync] 伺服器時間已同步。誤差偏移: ${this.serverTimeOffset}ms`);
+            }
+        } catch (e) {
+            console.warn('[ClockSync] 無法同步伺服器時間，將使用本地時間。', e);
+        }
+    }
+
+    /**
+     * 獲取校準後的伺服器時間
+     */
+    getCurrentServerTime() {
+        return new Date(Date.now() + this.serverTimeOffset);
     }
 
     async connectRealtime() {
@@ -315,6 +348,9 @@ class SoulstoneTracker {
         if (!this.supabase) return;
 
         try {
+            // 獲取數據的同時一併同步時鐘
+            await this.syncServerTime();
+
             const { data, error } = await this.supabase
                 .from('soulstone_timers')
                 .select('*')
@@ -368,6 +404,7 @@ class SoulstoneTracker {
 
             const localMapId = serverMapId.replace(`${currentServer}_`, '');
             if (localMapId && this.state[localMapId]) {
+                const now = this.getCurrentServerTime();
                 const newState = {
                     nextSpawn: newRecord.next_spawn ? new Date(newRecord.next_spawn) : null,
                     collectedUsed: newRecord.collected_used,
@@ -422,7 +459,7 @@ class SoulstoneTracker {
             collected_used: this.state[mapId].collectedUsed,
             cycle_end_time: this.state[mapId].cycleEndTime ? this.state[mapId].cycleEndTime.toISOString() : null,
             base_time: this.state[mapId].baseTime ? this.state[mapId].baseTime.toISOString() : null,
-            updated_at: new Date().toISOString()
+            updated_at: this.getCurrentServerTime().toISOString()
         };
 
         try {
@@ -568,7 +605,7 @@ class SoulstoneTracker {
      * cycleEndTime 記錄本輪的預期結束時間，供 markCollected 計算用。
      */
     setSpawnTime(mapId) {
-        const now = new Date();
+        const now = this.getCurrentServerTime();
         const existingSpawn = this.state[mapId].nextSpawn;
         let finalSpawn = now;
 
@@ -614,7 +651,7 @@ class SoulstoneTracker {
         // 標記已使用
         mapState.collectedUsed = true;
 
-        const now = new Date();
+        const now = this.getCurrentServerTime();
         const scheduledSpawn = mapState.nextSpawn;
         const remaining = scheduledSpawn.getTime() - now.getTime();
 
@@ -644,7 +681,7 @@ class SoulstoneTracker {
         this.state[mapId].collectedUsed = false;
         this.state[mapId].cycleEndTime = null;
         this.state[mapId].baseTime = null;
-        this.state[mapId].lastUpdated = new Date();
+        this.state[mapId].lastUpdated = this.getCurrentServerTime();
 
         this.saveToSupabase(mapId, true);
         this.updateDisplay(mapId);
@@ -655,7 +692,7 @@ class SoulstoneTracker {
      * 注意：不 snap，保留地圖的自然偏移量，讓遊戲實際時間與追蹤器同步
      */
     setNextIntervalTime(mapId) {
-        const now = new Date();
+        const now = this.getCurrentServerTime();
         const upcomingSpawn = new Date(now.getTime() + 10 * 60 * 1000);
         const existingSpawn = this.state[mapId].nextSpawn;
         let finalSpawn = upcomingSpawn;
@@ -692,7 +729,7 @@ class SoulstoneTracker {
         CONFIG.MAPS.forEach(map => this.updateDisplay(map.id));
         
         const activeCount = Object.values(this.state).filter(s => s.nextSpawn).length;
-        const warningCount = Object.values(this.state).filter(s => s.nextSpawn && (s.nextSpawn.getTime() - new Date().getTime()) <= CONFIG.WARNING_BEFORE).length;
+        const warningCount = Object.values(this.state).filter(s => s.nextSpawn && (s.nextSpawn.getTime() - this.getCurrentServerTime().getTime()) <= CONFIG.WARNING_BEFORE).length;
         const globalStatusEl = document.getElementById('global-status');
         if (globalStatusEl) {
             globalStatusEl.textContent = t('globalStatusFormat', activeCount, warningCount);
@@ -701,7 +738,7 @@ class SoulstoneTracker {
 
     updateDisplay(mapId) {
         const state = this.state[mapId];
-        const now = new Date();
+        const now = this.getCurrentServerTime();
 
         // Update timer value
         const nextEl = document.getElementById(`next-${mapId}`);
@@ -860,7 +897,7 @@ class SoulstoneTracker {
     }
 
     updateLastUpdated() {
-        if (!this.lastSyncTime) this.lastSyncTime = new Date();
+        if (!this.lastSyncTime) this.lastSyncTime = this.getCurrentServerTime();
         const text = `${t('lastUpdated')}${this.lastSyncTime.toLocaleTimeString(currentLang === 'en' ? 'en-US' : 'zh-TW')}`;
         const el = document.getElementById('last-updated');
         if (el) el.textContent = text;
@@ -1054,7 +1091,7 @@ class SoulstoneTracker {
         const modalCancel = document.getElementById('modal-cancel');
 
         // 計算按下時的基準時間與下輪預計時間 (140分後)
-        const now = new Date();
+        const now = this.getCurrentServerTime();
         const nextSpawnTime = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
         const baseTimeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
         const nextTimeStr = `${nextSpawnTime.getHours().toString().padStart(2,'0')}:${nextSpawnTime.getMinutes().toString().padStart(2,'0')}`;
