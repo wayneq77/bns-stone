@@ -60,7 +60,7 @@ const I18N = {
         'toastReset': '🔔 校正完成：靈石將出現在',
         // modal 1
         'modalSpawnedTitle': '確定靈石已出現了嗎？',
-        'modalSpawnedSub': (base, next) => `將以當下時間 <strong style="color:var(--accent-orange)">${base}</strong> 為起點，下次出現設定為 <strong style="color:var(--accent-gold)">${next}</strong>（140分後）。<br>若本輪的靈石已被採集完畢，即可按下「已撿完」將時間縮短20分鐘。`,
+        'modalSpawnedSub': (base, next) => `靈石將從現在 <strong style="color:var(--accent-orange)">${base}</strong> 開始出現（預計存在 20 分鐘）。<br>下輪出現時間設定為 <strong style="color:var(--accent-gold)">${next}</strong> (140分後)。`,
         // modal 2
         'modalUpcomingTitle': '確定出現即將出現靈石的圖案再點此按鈕？',
         'modalUpcomingSub': '將自動設定為 **10分鐘後** 出現，並開始倒數計時。確認執行嗎？',
@@ -101,7 +101,7 @@ const I18N = {
         'toastReset': '🔔 Calibrated! Next spawn at',
         // modal 1
         'modalSpawnedTitle': 'Confirm Soulstone spawned?',
-        'modalSpawnedSub': (base, next) => `Starting from <strong style="color:var(--accent-orange)">${base}</strong>, next spawn will be <strong style="color:var(--accent-gold)">${next}</strong> (in 140m).<br>If all stones are collected later, click "Collected" to reduce the timer by 20m.`,
+        'modalSpawnedSub': (base, next) => `Stones spawning starting from <strong style="color:var(--accent-orange)">${base}</strong> (lasts 20m).<br>Next spawn scheduled for <strong style="color:var(--accent-gold)">${next}</strong> (in 140m).`,
         // modal 2
         'modalUpcomingTitle': 'Confirm upcoming warning?',
         'modalUpcomingSub': 'This will set the spawn time to exactly **10 minutes from now**. Confirm?',
@@ -998,7 +998,7 @@ class SoulstoneTracker {
         const modalConfirm = document.getElementById('modal-confirm');
         const modalCancel = document.getElementById('modal-cancel');
 
-        // 計算按下時的基準時間
+        // 計算按下時的基準時間與下輪預計時間 (140分後)
         const now = new Date();
         const nextSpawnTime = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
         const baseTimeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
