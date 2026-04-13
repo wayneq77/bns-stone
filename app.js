@@ -237,10 +237,11 @@ class SoulstoneTracker {
         if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_KEY) return;
         try {
             const start = Date.now();
-            // 指向 REST API 端點並攜帶 API KEY，確保大部份環境都能通過安全檢查
-            const url = `${CONFIG.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/`;
+            // 使用 GET 請求並帶上 apikey。CORS 通常允許這種類型的授權請求。
+            // 限制取回的資料量 (select=id&limit=1) 以節省頻寬。
+            const url = `${CONFIG.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/soulstone_timers?select=id&limit=1`;
             const response = await fetch(url, { 
-                method: 'HEAD',
+                method: 'GET',
                 headers: {
                     'apikey': CONFIG.SUPABASE_KEY,
                     'Content-Type': 'application/json'
@@ -251,15 +252,17 @@ class SoulstoneTracker {
             if (serverDateStr) {
                 const serverTime = new Date(serverDateStr).getTime();
                 const now = Date.now();
-                // 補償網路往返時間 (RTT) 的一半
                 const rttOffset = (now - start) / 2;
                 this.serverTimeOffset = (serverTime + rttOffset) - now;
                 this.lastSyncTime = this.getCurrentServerTime();
                 console.log(`[ClockSync] 伺服器時間已同步。偏移: ${this.serverTimeOffset}ms`);
+            } else {
+                console.warn('[ClockSync] 伺服器未傳回 Date 標頭');
             }
         } catch (e) {
-            console.warn('[ClockSync] 無法同步伺服器時間，將使用本地時間。', e);
+            console.warn('[ClockSync] 伺服器時間同步失敗，將沿用上次校準或本地時間。', e);
         }
+        this.updateLastUpdated();
     }
 
     /**
@@ -905,10 +908,16 @@ class SoulstoneTracker {
     }
 
     updateLastUpdated() {
-        if (!this.lastSyncTime) this.lastSyncTime = this.getCurrentServerTime();
-        const text = `${t('lastUpdated')}${this.lastSyncTime.toLocaleTimeString(currentLang === 'en' ? 'en-US' : 'zh-TW')}`;
         const el = document.getElementById('last-updated');
-        if (el) el.textContent = text;
+        if (!el) return;
+
+        if (!this.lastSyncTime) {
+            el.textContent = currentLang === 'en' ? '🕒 Initializing clock sync...' : '🕒 正在與伺服器同步計時...';
+            return;
+        }
+
+        const timeStr = this.lastSyncTime.toLocaleTimeString(currentLang === 'en' ? 'en-US' : 'zh-TW');
+        el.textContent = `${t('lastUpdated')}${timeStr} (Server)`;
     }
 
     updateLanguage() {
