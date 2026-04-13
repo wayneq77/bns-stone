@@ -234,13 +234,15 @@ class SoulstoneTracker {
      * 透過讀取 Supabase 的 HTTP Header 中的 Date 欄位來獲取權威系統時間
      */
     async syncServerTime() {
-        if (!CONFIG.SUPABASE_URL) return;
         try {
             const start = Date.now();
-            // --- 終極 CORS 繞過方案：簡單請求 (Simple Request) ---
-            // 故意不帶任何自定義標頭 (如 apikey)，這樣瀏覽器就不會發送 OPTIONS 預檢請求。
-            // 雖然 Supabase 會回傳 401 Unauthorized，但 HTTP 標準規定必須包含 Date 標頭。
-            const response = await fetch(CONFIG.SUPABASE_URL);
+            // --- 確定性對時方案：同源請求 (Same-Origin) ---
+            // 直接向網頁目前的網域發送請求。因為是同網域，我們可以完整讀取 Date 標頭。
+            // 由於網頁託管在 Cloudflare，這將獲得極精準的邊緣伺服器時間。
+            const response = await fetch(window.location.origin, { 
+                method: 'HEAD',
+                cache: 'no-store'
+            });
             
             const serverDateStr = response.headers.get('Date');
             if (serverDateStr) {
@@ -249,12 +251,12 @@ class SoulstoneTracker {
                 const rttOffset = (now - start) / 2;
                 this.serverTimeOffset = (serverTime + rttOffset) - now;
                 this.lastSyncTime = this.getCurrentServerTime();
-                console.log(`[ClockSync] 伺服器時間已同步 (Simple Request)。偏移: ${this.serverTimeOffset}ms`);
+                console.log(`[ClockSync] 伺服器時間已同步 (Same-Origin)。偏移: ${this.serverTimeOffset}ms`);
             } else {
-                console.warn('[ClockSync] 伺服器回傳中遺失 Date 標頭');
+                console.warn('[ClockSync] 同源伺服器未傳回 Date 標頭');
             }
         } catch (e) {
-            console.warn('[ClockSync] 伺服器時間同步失敗，正在嘗試後備方案...', e);
+            console.warn('[ClockSync] 同源對時失敗，將沿用上次校準或本地時間。', e);
         }
         this.updateLastUpdated();
     }
