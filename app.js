@@ -598,19 +598,10 @@ class SoulstoneTracker {
      */
     setSpawnTime(mapId) {
         const now = this.getCurrentServerTime();
-        const existingSpawn = this.state[mapId].nextSpawn;
-        let finalSpawn = now;
-
-        // --- 智慧吸附 (Smart Snapping) ---
-        // 如果現在的時間與原本預計出現的時間相差不到 10 分鐘，則採用原本預計的時間為基準，消除漂移
-        if (existingSpawn) {
-            const diff = Math.abs(now.getTime() - existingSpawn.getTime());
-            const tenMinutes = 10 * 60 * 1000;
-            if (diff < tenMinutes) {
-                console.log(`[SmartCalibration] 偵測到點擊延遲 (${(diff/1000).toFixed(1)}s)，已自動回填至正確排程。`);
-                finalSpawn = existingSpawn;
-            }
-        }
+        
+        // 使用者按下「已出現靈石」= 靈石「現在」出現
+        // 永遠以使用者點擊的當下時間為準，不做任何吸附
+        const finalSpawn = now;
         
         this.state[mapId].collectedUsed = false; 
         this.state[mapId].nextSpawn = finalSpawn;
@@ -685,20 +676,8 @@ class SoulstoneTracker {
      */
     setNextIntervalTime(mapId) {
         const now = this.getCurrentServerTime();
-        const upcomingSpawn = new Date(now.getTime() + 10 * 60 * 1000);
-        const existingSpawn = this.state[mapId].nextSpawn;
-        let finalSpawn = upcomingSpawn;
-
-        // --- 智慧吸附 (Smart Snapping) ---
-        // 如果「10分鐘後」的時間與原本預計的時間相差不到 5 分鐘，維持原本的時間，避免破壞精準度
-        if (existingSpawn) {
-            const diff = Math.abs(upcomingSpawn.getTime() - existingSpawn.getTime());
-            const fiveMinutes = 5 * 60 * 1000;
-            if (diff < fiveMinutes) {
-                console.log(`[SmartCalibration] 收到警報，與預計時間吻合，維持原計時器以確保秒數精準。`);
-                finalSpawn = existingSpawn;
-            }
-        }
+        // 「即將出現」= 10 分鐘後出現，永遠以使用者的當前時間為基準
+        const finalSpawn = new Date(now.getTime() + 10 * 60 * 1000);
         
         this.state[mapId].collectedUsed = false;
         this.state[mapId].nextSpawn = finalSpawn;
