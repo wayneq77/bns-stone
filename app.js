@@ -234,11 +234,19 @@ class SoulstoneTracker {
      * 透過讀取 Supabase 的 HTTP Header 中的 Date 欄位來獲取權威系統時間
      */
     async syncServerTime() {
-        if (!CONFIG.SUPABASE_URL) return;
+        if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_KEY) return;
         try {
             const start = Date.now();
-            // 使用 HEAD 請求最省流量，僅為了拿 Header
-            const response = await fetch(CONFIG.SUPABASE_URL, { method: 'HEAD' });
+            // 指向 REST API 端點並攜帶 API KEY，確保大部份環境都能通過安全檢查
+            const url = `${CONFIG.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/`;
+            const response = await fetch(url, { 
+                method: 'HEAD',
+                headers: {
+                    'apikey': CONFIG.SUPABASE_KEY,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
             const serverDateStr = response.headers.get('Date');
             if (serverDateStr) {
                 const serverTime = new Date(serverDateStr).getTime();
@@ -247,7 +255,7 @@ class SoulstoneTracker {
                 const rttOffset = (now - start) / 2;
                 this.serverTimeOffset = (serverTime + rttOffset) - now;
                 this.lastSyncTime = this.getCurrentServerTime();
-                console.log(`[ClockSync] 伺服器時間已同步。誤差偏移: ${this.serverTimeOffset}ms`);
+                console.log(`[ClockSync] 伺服器時間已同步。偏移: ${this.serverTimeOffset}ms`);
             }
         } catch (e) {
             console.warn('[ClockSync] 無法同步伺服器時間，將使用本地時間。', e);
