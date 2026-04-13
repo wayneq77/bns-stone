@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS soulstone_timers (
     map_id VARCHAR(50) UNIQUE NOT NULL,
     next_spawn TIMESTAMP WITH TIME ZONE,
     spawn_minutes INTEGER[] DEFAULT ARRAY[0, 20, 40],
+    collected_used BOOLEAN DEFAULT FALSE,
+    cycle_end_time TIMESTAMP WITH TIME ZONE,
+    base_time TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

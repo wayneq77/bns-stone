@@ -411,7 +411,6 @@ class SoulstoneTracker {
 
             const localMapId = serverMapId.replace(`${currentServer}_`, '');
             if (localMapId && this.state[localMapId]) {
-                const now = this.getCurrentServerTime();
                 const newState = {
                     nextSpawn: newRecord.next_spawn ? new Date(newRecord.next_spawn) : null,
                     collectedUsed: newRecord.collected_used,
@@ -420,24 +419,10 @@ class SoulstoneTracker {
                     updatedAt: new Date(newRecord.updated_at)
                 };
 
-                // --- 智慧校正攔截 (Update Sanitization) ---
-                // 如果是「手動校準 (isManual)」，則無視任何過濾規則，絕對優先採用
-                const isManual = !!(payload.payload?.isManual || payload.isManual);
-                
-                if (this.state[localMapId].nextSpawn && newState.nextSpawn && !isManual) {
-                    const diff = Math.abs(this.state[localMapId].nextSpawn.getTime() - newState.nextSpawn.getTime());
-                    const fiveMinutes = 5 * 60 * 1000;
-                    
-                    // 只有當新資料與本地相比「大幅跳變」超過 5 分鐘（代表有人進行了手動校正），我們才接受更新
-                    if (diff > 0 && diff < fiveMinutes) {
-                        console.log(`[SmartSync] 偵測到微小偏差 (${(diff/1000).toFixed(1)}s)，判定為時鐘雜訊，已忽略該同步。`);
-                        return; 
-                    }
-                }
-
-                if (isManual) {
-                    console.log(`[SmartSync] 收到權威手動更新 (${localMapId})，強制覆蓋。`);
-                }
+                // --- 資料庫變更事件：無條件信任 ---
+                // postgres_changes 代表已確認寫入資料庫的資料，是權威來源。
+                // 不再過濾任何更新，確保所有裝置能即時同步微調操作。
+                console.log(`[RealtimeSync] 收到資料庫更新 (${localMapId})，同步中...`);
 
                 this.state[localMapId].nextSpawn = newState.nextSpawn;
                 this.state[localMapId].spawnMinutes = newRecord.spawn_minutes || [0, 20, 40];
@@ -597,7 +582,7 @@ class SoulstoneTracker {
         if (state.cycleEndTime) {
             state.cycleEndTime = new Date(state.cycleEndTime.getTime() + msToAdd);
         }
-        state.lastUpdated = new Date();
+        state.lastUpdated = this.getCurrentServerTime();
         
         this.saveToSupabase(mapId, true);
         this.updateDisplay(mapId);
@@ -871,10 +856,13 @@ class SoulstoneTracker {
     }
 
     formatTime(date) {
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        const seconds = date.getSeconds().toString().padStart(2, '0');
-        return `${hours}:${minutes}:${seconds}`;
+        return date.toLocaleTimeString('zh-TW', {
+            timeZone: 'Asia/Taipei',
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
     }
 
     formatDuration(ms) {
