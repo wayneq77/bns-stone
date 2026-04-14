@@ -231,41 +231,74 @@ class SoulstoneTracker {
 
     /**
      * 同步伺服器時間校準
-     * 透過讀取 Supabase 的 HTTP Header 中的 Date 欄位來獲取權威系統時間
+     * 透過 Supabase RPC get_server_time() 取得資料庫的 NOW() 作為權威時間
      */
     async syncServerTime() {
         try {
             const start = Date.now();
-            // --- 確定性對時方案：同源請求 (Same-Origin) ---
-            // 直接向網頁目前的網域發送請求。因為是同網域，我們可以完整讀取 Date 標頭。
-            // 由於網頁託管在 Cloudflare，這將獲得極精準的邊緣伺服器時間。
-            const response = await fetch(window.location.origin, { 
-                method: 'HEAD',
-                cache: 'no-store'
-            });
-            
-            const serverDateStr = response.headers.get('Date');
-            if (serverDateStr) {
-                const serverTime = new Date(serverDateStr).getTime();
-                const now = Date.now();
-                const rttOffset = (now - start) / 2;
-                this.serverTimeOffset = (serverTime + rttOffset) - now;
-                this.lastSyncTime = this.getCurrentServerTime();
-                console.log(`[ClockSync] 伺服器時間已同步 (Same-Origin)。偏移: ${this.serverTimeOffset}ms`);
+            if (this.supabase) {
+                const { data, error } = await this.supabase.rpc('get_server_time');
+                if (!error && data && data.server_now) {
+                    const serverTime = new Date(data.server_now).getTime();
+                    const now = Date.now();
+                    const rtt = now - start;
+                    this.serverTimeOffset = (serverTime + rtt / 2) - now;
+                    this.lastSyncTime = this.getCurrentServerTime();
+                    console.log(`[ClockSync] 伺服器時間已同步 (Supabase RPC)。偏移: ${this.serverTimeOffset}ms, RTT: ${rtt}ms`);
+                } else {
+                    console.warn('[ClockSync] RPC get_server_time 失敗:', error);
+                }
             } else {
-                console.warn('[ClockSync] 同源伺服器未傳回 Date 標頭');
+                // Fallback: same-origin HEAD request
+                const response = await fetch(window.location.origin, { method: 'HEAD', cache: 'no-store' });
+                const serverDateStr = response.headers.get('Date');
+                if (serverDateStr) {
+                    const serverTime = new Date(serverDateStr).getTime();
+                    const now = Date.now();
+                    this.serverTimeOffset = (serverTime + (now - start) / 2) - now;
+                    this.lastSyncTime = this.getCurrentServerTime();
+                    console.log(`[ClockSync] 伺服器時間已同步 (Same-Origin)。偏移: ${this.serverTimeOffset}ms`);
+                }
             }
         } catch (e) {
-            console.warn('[ClockSync] 同源對時失敗，將沿用上次校準或本地時間。', e);
+            console.warn('[ClockSync] 對時失敗，將沿用上次校準或本地時間。', e);
         }
         this.updateLastUpdated();
     }
 
     /**
-     * 獲取校準後的伺服器時間
+     * 獲取校準後的伺服器時間（僅用於顯示倒數計時）
      */
     getCurrentServerTime() {
         return new Date(Date.now() + this.serverTimeOffset);
+    }
+
+    /**
+     * 將 RPC 回傳的結果套用到本地狀態，並重新校準時鐘
+     * @param {string} mapId - 地圖 ID
+     * @param {object} result - RPC 回傳的 JSON
+     * @param {number} requestStart - 請求開始的 Date.now()
+     */
+    applyRpcResult(mapId, result, requestStart) {
+        if (!result) return;
+
+        // 校準時鐘：用 RPC 回傳的 server_now 更新偏移量
+        if (result.server_now) {
+            const serverTime = new Date(result.server_now).getTime();
+            const now = Date.now();
+            const rtt = now - requestStart;
+            this.serverTimeOffset = (serverTime + rtt / 2) - now;
+            this.lastSyncTime = this.getCurrentServerTime();
+        }
+
+        // 更新本地狀態
+        this.state[mapId].nextSpawn = result.next_spawn ? new Date(result.next_spawn) : null;
+        this.state[mapId].cycleEndTime = result.cycle_end_time ? new Date(result.cycle_end_time) : null;
+        this.state[mapId].collectedUsed = result.collected_used ?? false;
+        this.state[mapId].lastUpdated = result.updated_at ? new Date(result.updated_at) : new Date();
+
+        this.updateDisplay(mapId);
+        this.updateLastUpdated();
     }
 
     async connectRealtime() {
@@ -570,93 +603,135 @@ class SoulstoneTracker {
         return snapped;
     }
 
-    adjustTime(mapId, minutesToAdd) {
+    /**
+     * 微調時間：呼叫伺服器端 RPC，在資料庫上直接對 next_spawn 加減
+     */
+    async adjustTime(mapId, minutesToAdd) {
         const state = this.state[mapId];
         if (!state.nextSpawn) {
             this.showToast('尚未設定時間，無法微調');
             return;
         }
 
-        const msToAdd = minutesToAdd * 60 * 1000;
-        state.nextSpawn = new Date(state.nextSpawn.getTime() + msToAdd);
-        if (state.cycleEndTime) {
-            state.cycleEndTime = new Date(state.cycleEndTime.getTime() + msToAdd);
+        if (!this.supabase) {
+            // Fallback: 本地計算
+            state.nextSpawn = new Date(state.nextSpawn.getTime() + minutesToAdd * 60 * 1000);
+            if (state.cycleEndTime) state.cycleEndTime = new Date(state.cycleEndTime.getTime() + minutesToAdd * 60 * 1000);
+            this.saveToLocalStorage();
+            this.updateDisplay(mapId);
+            this.showToast(t('toastAdjusted'));
+            return;
         }
-        state.lastUpdated = this.getCurrentServerTime();
-        
-        this.saveToSupabase(mapId, true);
-        this.updateDisplay(mapId);
+
+        const serverMapId = `${currentServer}_${mapId}`;
+        const start = Date.now();
+        try {
+            const { data, error } = await this.supabase.rpc('adjust_spawn_time', {
+                p_map_id: serverMapId,
+                p_minutes: minutesToAdd
+            });
+            if (error) throw error;
+            this.applyRpcResult(mapId, data, start);
+            console.log(`[RPC] adjust_spawn_time(${mapId}, ${minutesToAdd}) 成功`);
+        } catch (e) {
+            console.error('[RPC] adjust_spawn_time 失敗:', e);
+            // Fallback
+            state.nextSpawn = new Date(state.nextSpawn.getTime() + minutesToAdd * 60 * 1000);
+            this.saveToSupabase(mapId, true);
+            this.updateDisplay(mapId);
+        }
         this.showToast(t('toastAdjusted'));
     }
 
     /**
-     * 設定出現靈石（靈石「現在」出現）
-     * 將 nextSpawn 設為「現在」，讓畫面立即進入「消失倒數 20 分鐘」模式。
-     * 20 分鐘後，updateDisplay 的自動推算邏輯會接手：
-     *   nextSpawn += 140m → 進入「等待下一輪」倒數。
-     * cycleEndTime 記錄本輪的預期結束時間，供 markCollected 計算用。
+     * 設定出現靈石：呼叫伺服器端 RPC，使用資料庫的 NOW()
+     * 完全不依賴客戶端時鐘
      */
-    setSpawnTime(mapId) {
-        const now = this.getCurrentServerTime();
-        
-        // 使用者按下「已出現靈石」= 靈石「現在」出現
-        // 永遠以使用者點擊的當下時間為準，不做任何吸附
-        const finalSpawn = now;
-        
-        this.state[mapId].collectedUsed = false; 
-        this.state[mapId].nextSpawn = finalSpawn;
-        this.state[mapId].cycleEndTime = new Date(finalSpawn.getTime() + CONFIG.DEFAULT_INTERVAL);
-        this.state[mapId].lastUpdated = now;
+    async setSpawnTime(mapId) {
+        if (!this.supabase) {
+            const now = new Date();
+            this.state[mapId].nextSpawn = now;
+            this.state[mapId].cycleEndTime = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
+            this.state[mapId].collectedUsed = false;
+            this.saveToLocalStorage();
+            this.updateDisplay(mapId);
+            return;
+        }
 
-        this.saveToSupabase(mapId, true);
-        this.updateDisplay(mapId);
+        const serverMapId = `${currentServer}_${mapId}`;
+        const start = Date.now();
+        try {
+            const { data, error } = await this.supabase.rpc('set_spawn_now', {
+                p_map_id: serverMapId
+            });
+            if (error) throw error;
+            this.applyRpcResult(mapId, data, start);
+            console.log(`[RPC] set_spawn_now(${mapId}) 成功: next_spawn=${data.next_spawn}`);
+        } catch (e) {
+            console.error('[RPC] set_spawn_now 失敗:', e);
+            // Fallback
+            const now = this.getCurrentServerTime();
+            this.state[mapId].nextSpawn = now;
+            this.state[mapId].cycleEndTime = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
+            this.state[mapId].collectedUsed = false;
+            this.saveToSupabase(mapId, true);
+            this.updateDisplay(mapId);
+        }
     }
 
     /**
-     * 已撿完按鈕（縮短下次出現時間，每輪只能執行一次）
-     * 
-     * nextSpawn 的意義：
-     *  - 靈石出現中：nextSpawn = 出現時間（remaining 為負）
-     *  - 等待中：nextSpawn = 下輪出現時間（remaining 為正）
-     *  - auto-advance 後：nextSpawn = 出現時間 + 140m
-     * 
-     * 已撿完邏輯：下輪出現 = 出現時間 + 120m
+     * 已撿完：呼叫伺服器端 RPC，用資料庫的 NOW() 判斷 remaining
      */
-    markCollected(mapId) {
+    async markCollected(mapId) {
         const mapState = this.state[mapId];
 
-        // 檢查：這輪是否已使用過
         if (mapState.collectedUsed) {
             console.log('這輪已使用過「已撿完」');
             return false;
         }
 
-        // 標記已使用
-        mapState.collectedUsed = true;
-
-        const now = this.getCurrentServerTime();
-        const scheduledSpawn = mapState.nextSpawn;
-        const remaining = scheduledSpawn.getTime() - now.getTime();
-
-        if (remaining <= 30 * 60 * 1000) {
-            // 靈石出現中（remaining <= 0）或即將出現（remaining 在 30m 內）
-            // scheduledSpawn = 出現時間，nextSpawn = 出現時間 + 120m
-            // 這樣算出的「下次出現」不會因為玩家晚按而飄移
-            mapState.nextSpawn = new Date(scheduledSpawn.getTime() + CONFIG.COLLECTED_INTERVAL);
-            mapState.cycleEndTime = mapState.nextSpawn;
+        if (!this.supabase) {
+            // Fallback: 本地計算
+            mapState.collectedUsed = true;
+            const now = new Date();
+            const remaining = mapState.nextSpawn.getTime() - now.getTime();
+            if (remaining <= 30 * 60 * 1000) {
+                mapState.nextSpawn = new Date(mapState.nextSpawn.getTime() + CONFIG.COLLECTED_INTERVAL);
+                mapState.cycleEndTime = mapState.nextSpawn;
+            } else {
+                mapState.nextSpawn = new Date(mapState.nextSpawn.getTime() - (CONFIG.DEFAULT_INTERVAL - CONFIG.COLLECTED_INTERVAL));
+            }
+            this.saveToLocalStorage();
+            this.updateDisplay(mapId);
             this.showToast(t('toastCollected'));
-        } else {
-            // 等待中（remaining > 30m）── 正常 140m 循環
-            // 直接將原本預計的時間扣除 20 分鐘 (140 - 120 = 20)
-            mapState.nextSpawn = new Date(scheduledSpawn.getTime() - (CONFIG.DEFAULT_INTERVAL - CONFIG.COLLECTED_INTERVAL));
-            this.showToast(t('toastShorten'));
+            return true;
         }
-        
-        mapState.lastUpdated = now;
 
-        this.saveToSupabase(mapId, true);
-        this.updateDisplay(mapId);
-        return true;
+        const serverMapId = `${currentServer}_${mapId}`;
+        const start = Date.now();
+        try {
+            const { data, error } = await this.supabase.rpc('mark_collected_fn', {
+                p_map_id: serverMapId
+            });
+            if (error) throw error;
+
+            if (data.error === 'already_collected') {
+                this.showToast('這輪已使用過「已撿完」功能');
+                return false;
+            }
+            if (data.error === 'no_spawn_set') {
+                this.showToast('請先按「已出現靈石」設定時間');
+                return false;
+            }
+
+            this.applyRpcResult(mapId, data, start);
+            this.showToast(t('toastCollected'));
+            console.log(`[RPC] mark_collected_fn(${mapId}) 成功`);
+            return true;
+        } catch (e) {
+            console.error('[RPC] mark_collected_fn 失敗:', e);
+            return false;
+        }
     }
 
     resetTimer(mapId) {
@@ -671,25 +746,41 @@ class SoulstoneTracker {
     }
 
     /**
-     * 接獲即將出現提醒，設定為 10 分鐘後出現
-     * 注意：不 snap，保留地圖的自然偏移量，讓遊戲實際時間與追蹤器同步
+     * 即將出現靈石：呼叫伺服器端 RPC，用資料庫的 NOW() + 10 minutes
      */
-    setNextIntervalTime(mapId) {
-        const now = this.getCurrentServerTime();
-        // 「即將出現」= 10 分鐘後出現，永遠以使用者的當前時間為基準
-        const finalSpawn = new Date(now.getTime() + 10 * 60 * 1000);
-        
-        this.state[mapId].collectedUsed = false;
-        this.state[mapId].nextSpawn = finalSpawn;
-        this.state[mapId].cycleEndTime = this.state[mapId].nextSpawn;
-        this.state[mapId].lastUpdated = now;
+    async setNextIntervalTime(mapId) {
+        if (!this.supabase) {
+            const now = new Date();
+            const finalSpawn = new Date(now.getTime() + 10 * 60 * 1000);
+            this.state[mapId].nextSpawn = finalSpawn;
+            this.state[mapId].cycleEndTime = finalSpawn;
+            this.state[mapId].collectedUsed = false;
+            this.saveToLocalStorage();
+            this.updateDisplay(mapId);
+            return;
+        }
 
-        this.saveToSupabase(mapId, true);
-        this.updateDisplay(mapId);
+        const serverMapId = `${currentServer}_${mapId}`;
+        const start = Date.now();
+        try {
+            const { data, error } = await this.supabase.rpc('set_spawn_upcoming', {
+                p_map_id: serverMapId
+            });
+            if (error) throw error;
+            this.applyRpcResult(mapId, data, start);
+            console.log(`[RPC] set_spawn_upcoming(${mapId}) 成功: next_spawn=${data.next_spawn}`);
 
-        const h = this.state[mapId].nextSpawn.getHours().toString().padStart(2, '0');
-        const m = this.state[mapId].nextSpawn.getMinutes().toString().padStart(2, '0');
-        this.showToast(t('toastReset', h, m));
+            const spawnDate = new Date(data.next_spawn);
+            const h = spawnDate.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' });
+            this.showToast(`${t('toastReset')} ${h}`);
+        } catch (e) {
+            console.error('[RPC] set_spawn_upcoming 失敗:', e);
+            const now = this.getCurrentServerTime();
+            this.state[mapId].nextSpawn = new Date(now.getTime() + 10 * 60 * 1000);
+            this.state[mapId].collectedUsed = false;
+            this.saveToSupabase(mapId, true);
+            this.updateDisplay(mapId);
+        }
     }
 
     // ================================
@@ -748,11 +839,36 @@ class SoulstoneTracker {
 
         // 已經超過存在時間 (20分鐘)，自動將排程推到下一輪 (未撿完的 140分鐘)
         if (remaining <= -20 * 60 * 1000) {
-            state.nextSpawn = new Date(state.nextSpawn.getTime() + 140 * 60 * 1000);
-            state.collectedUsed = false;
-            // 自動進位標記為非手動，防止覆蓋其他裝置的新進度
-            this.saveToSupabase(mapId, false);
-            return this.updateDisplay(mapId);
+            if (this.supabase && !this._autoAdvancePending?.[mapId]) {
+                // 用伺服器端 RPC 推進，避免客戶端時鐘問題
+                if (!this._autoAdvancePending) this._autoAdvancePending = {};
+                this._autoAdvancePending[mapId] = true;
+                const serverMapId = `${currentServer}_${mapId}`;
+                const start = Date.now();
+                this.supabase.rpc('auto_advance_spawn', { p_map_id: serverMapId }).then(({ data, error }) => {
+                    delete this._autoAdvancePending[mapId];
+                    if (!error && data) {
+                        this.applyRpcResult(mapId, data, start);
+                        console.log(`[RPC] auto_advance_spawn(${mapId}) 成功`);
+                    } else {
+                        console.error('[RPC] auto_advance_spawn 失敗:', error);
+                        // Fallback
+                        state.nextSpawn = new Date(state.nextSpawn.getTime() + 140 * 60 * 1000);
+                        state.collectedUsed = false;
+                        this.saveToSupabase(mapId, false);
+                    }
+                });
+            } else if (!this.supabase) {
+                // 離線 Fallback
+                state.nextSpawn = new Date(state.nextSpawn.getTime() + 140 * 60 * 1000);
+                state.collectedUsed = false;
+                this.saveToLocalStorage();
+            }
+            // 暫時先用本地推進來更新畫面（RPC 回來後會覆蓋）
+            if (!this.supabase) {
+                return this.updateDisplay(mapId);
+            }
+            return;
         }
 
         // 檢查是否已過了cycleEndTime，解除「已撿完」限制
