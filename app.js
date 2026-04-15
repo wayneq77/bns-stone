@@ -853,15 +853,30 @@ class SoulstoneTracker {
             return;
         }
 
-        const remaining = state.nextSpawn.getTime() - now.getTime();
-        const spawnAge = -remaining; // 靈石出現後經過多久（正數才有意義）
         const DESPAWN = CONFIG.DESPAWN_WINDOW;
         const CYCLE = CONFIG.DEFAULT_INTERVAL;
         const CYCLE_COLLECTED = CONFIG.COLLECTED_INTERVAL;
 
+        let currentNextSpawn = state.nextSpawn.getTime();
+        let currentCollected = state.collectedUsed;
+
+        // 無縫將時間推進到「與目前時間相關」的這一個循環
+        // 如果這個時間點連 20 分鐘的消失期都過完了，代表此輪徹底結束，推進到下一輪
+        if (currentNextSpawn + DESPAWN <= now.getTime()) {
+            currentNextSpawn += currentCollected ? CYCLE_COLLECTED : CYCLE;
+            currentCollected = false; // 下一輪開始不再繼承採集狀態
+
+            while (currentNextSpawn + DESPAWN <= now.getTime()) {
+                currentNextSpawn += CYCLE;
+            }
+        }
+
+        const remaining = currentNextSpawn - now.getTime();
+        const spawnAge = -remaining; // 正數代表已經過了出現時間多久
+
         // === Phase 1: 等待出現 (remaining > 0) ===
         if (remaining > 0) {
-            nextEl.textContent = this.formatTime(state.nextSpawn);
+            nextEl.textContent = this.formatTime(new Date(currentNextSpawn));
             if (timerLabel) timerLabel.textContent = t('remaining');
             countdownEl.textContent = this.formatDuration(remaining);
 
@@ -880,8 +895,8 @@ class SoulstoneTracker {
                     : 'timer-countdown warning';
             } else {
                 this.alarmState[mapId] = false;
-                statusEl.textContent = state.collectedUsed ? t('collected') : t('notCollected');
-                statusEl.className = state.collectedUsed ? 'map-status active' : 'map-status warning';
+                statusEl.textContent = currentCollected ? t('collected') : t('notCollected');
+                statusEl.className = currentCollected ? 'map-status active' : 'map-status warning';
                 cardEl.classList.remove('urgent', 'soon');
                 countdownEl.className = 'timer-countdown';
             }
@@ -890,10 +905,10 @@ class SoulstoneTracker {
             return;
         }
 
-        // === Phase 2: 靈石已出現，消失倒數 (0 < spawnAge < 20min) ===
+        // === Phase 2: 靈石已出現，消失倒數 (0 <= spawnAge < 20min) ===
         if (spawnAge < DESPAWN) {
             const despawnRemaining = DESPAWN - spawnAge;
-            const nextCycleTime = new Date(state.nextSpawn.getTime() + CYCLE);
+            const nextCycleTime = new Date(currentNextSpawn + (currentCollected ? CYCLE_COLLECTED : CYCLE));
 
             nextEl.textContent = this.formatTime(nextCycleTime);
             if (timerLabel) timerLabel.textContent = t('despawning');
@@ -907,46 +922,6 @@ class SoulstoneTracker {
             this.updateCollectedBtnState(collectedBtn, state, true);
             return;
         }
-
-        // === Phase 3: 已消失，計算下一輪（純顯示計算，不寫 DB！） ===
-        const firstCycle = state.collectedUsed ? CYCLE_COLLECTED : CYCLE;
-        let effectiveNext = new Date(state.nextSpawn.getTime() + firstCycle);
-        let effectiveCollected = state.collectedUsed;
-
-        // 如果第一輪也過了，用 140min 循環繼續推進
-        while (effectiveNext.getTime() <= now.getTime()) {
-            effectiveNext = new Date(effectiveNext.getTime() + CYCLE);
-            effectiveCollected = false; // 新循環重置
-        }
-
-        const effectiveRemaining = effectiveNext.getTime() - now.getTime();
-
-        nextEl.textContent = this.formatTime(effectiveNext);
-        if (timerLabel) timerLabel.textContent = t('remaining');
-        countdownEl.textContent = this.formatDuration(effectiveRemaining);
-
-        // 警報 (下一輪即將出現)
-        if (effectiveRemaining <= CONFIG.WARNING_BEFORE) {
-            if (!this.alarmState[mapId]) {
-                this.alarmState[mapId] = true;
-                this.playAlarm();
-            }
-            statusEl.textContent = t('statusUpcoming');
-            statusEl.className = 'map-status danger';
-            cardEl.classList.add('soon');
-            cardEl.classList.remove('urgent');
-            countdownEl.className = effectiveRemaining <= CONFIG.DANGER_BEFORE
-                ? 'timer-countdown danger'
-                : 'timer-countdown warning';
-        } else {
-            this.alarmState[mapId] = false;
-            statusEl.textContent = effectiveCollected ? t('collected') : t('notCollected');
-            statusEl.className = effectiveCollected ? 'map-status active' : 'map-status warning';
-            cardEl.classList.remove('urgent', 'soon');
-            countdownEl.className = 'timer-countdown';
-        }
-
-        this.updateCollectedBtnState(collectedBtn, state, true);
     }
 
     updateCollectedBtnState(btn, state, hasTimer) {
