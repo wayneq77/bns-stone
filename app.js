@@ -97,7 +97,7 @@ const I18N = {
         'despawning': 'Despawning in',
         'statusUpcoming': 'Upcoming',
         'collected': 'Collected',
-        'notCollected': 'Unknown',
+        'notCollected': 'Not Collected',
         'btnSpawned': 'Spawned',
         'btnUpcoming': 'Upcoming',
         'btnCollected': 'Collected',
