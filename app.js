@@ -23,13 +23,15 @@ const CONFIG = {
     DESPAWN_WINDOW: 20 * 60 * 1000,
     // Map definitions (4 maps × 2 channels = 8 entries)
     MAPS: [
+        // Top row: Ch.1
         { id: 'spirit-stone-valley-ch1', name: '靈石谷', channel: 1, icon: '🏔️' },
-        { id: 'spirit-stone-valley-ch2', name: '靈石谷', channel: 2, icon: '🏔️' },
         { id: 'yu-hwang-fortress-ch1',   name: '玉皇要塞', channel: 1, icon: '🏯' },
-        { id: 'yu-hwang-fortress-ch2',   name: '玉皇要塞', channel: 2, icon: '🏯' },
         { id: 'blood-ruffian-base-ch1',  name: '糾土地帶', channel: 1, icon: '🩸' },
-        { id: 'blood-ruffian-base-ch2',  name: '糾土地帶', channel: 2, icon: '🩸' },
         { id: 'red-dragon-forge-ch1',    name: '赤龍火山', channel: 1, icon: '🌋' },
+        // Bottom row: Ch.2
+        { id: 'spirit-stone-valley-ch2', name: '靈石谷', channel: 2, icon: '🏔️' },
+        { id: 'yu-hwang-fortress-ch2',   name: '玉皇要塞', channel: 2, icon: '🏯' },
+        { id: 'blood-ruffian-base-ch2',  name: '糾土地帶', channel: 2, icon: '🩸' },
         { id: 'red-dragon-forge-ch2',    name: '赤龍火山', channel: 2, icon: '🌋' }
     ]
 };
