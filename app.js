@@ -8,10 +8,10 @@
 // ================================
 
 const CONFIG = {
-    // Default spawn interval: 2 hours 20 minutes (140 min)
-    DEFAULT_INTERVAL: 140 * 60 * 1000,
-    // When collected: 2 hours only (120 min)
-    COLLECTED_INTERVAL: 120 * 60 * 1000,
+    // Default spawn interval: cycle is 160m so waiting time after 20m despawn is 140m
+    DEFAULT_INTERVAL: 160 * 60 * 1000,
+    // When collected: cycle is 140m so waiting time after 20m despawn is 120m
+    COLLECTED_INTERVAL: 140 * 60 * 1000,
     // Warning time: 5 minutes before spawn
     WARNING_BEFORE: 5 * 60 * 1000,
     // Danger time: 1 minute before spawn
