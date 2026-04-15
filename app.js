@@ -915,7 +915,7 @@ class SoulstoneTracker {
             countdownEl.textContent = this.formatDuration(despawnRemaining);
             countdownEl.className = 'timer-countdown danger';
             statusEl.textContent = t('spawning');
-            statusEl.className = 'map-status danger';
+            statusEl.className = 'map-status danger blinking-text';
             cardEl.classList.add('urgent');
             cardEl.classList.remove('soon');
 
