@@ -218,8 +218,8 @@ class SoulstoneTracker {
                 <div class="card-header">
                     <div class="map-icon">${map.icon}</div>
                     <div class="map-info">
-                        <h2 class="map-name">${map.name}${chLabel}</h2>
-                        <span class="map-status" id="status-${map.id}">等待設定</span>
+                        <h2 class="map-name" data-i18n="${map.id}">${map.name}${chLabel}</h2>
+                        <span class="map-status" id="status-${map.id}" data-i18n="statusWaiting">等待設定</span>
                     </div>
                 </div>
                 <div class="timer-display" id="timer-${map.id}">
@@ -242,11 +242,11 @@ class SoulstoneTracker {
                 </div>
                 <div class="card-actions">
                     <div class="actions-top">
-                        <button class="btn btn-primary set-btn" data-action="set" data-map="${map.id}">已出現靈石</button>
-                        <button class="btn btn-info interval-btn" data-action="interval" data-map="${map.id}">即將出現靈石</button>
+                        <button class="btn btn-primary set-btn" data-action="set" data-map="${map.id}" data-i18n="btnSpawned">已出現靈石</button>
+                        <button class="btn btn-info interval-btn" data-action="interval" data-map="${map.id}" data-i18n="btnUpcoming">即將出現靈石</button>
                     </div>
                     <div class="actions-bottom">
-                        <button class="btn btn-success collected-btn" data-action="collected" data-map="${map.id}">已撿完</button>
+                        <button class="btn btn-success collected-btn" data-action="collected" data-map="${map.id}" data-i18n="btnCollected">已撿完</button>
                     </div>
                 </div>
             `;
