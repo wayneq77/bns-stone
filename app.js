@@ -855,20 +855,12 @@ class SoulstoneTracker {
 
         const DESPAWN = CONFIG.DESPAWN_WINDOW;
         const CYCLE = CONFIG.DEFAULT_INTERVAL;
-        const CYCLE_COLLECTED = CONFIG.COLLECTED_INTERVAL;
 
         let currentNextSpawn = state.nextSpawn.getTime();
-        let currentCollected = state.collectedUsed;
 
         // 無縫將時間推進到「與目前時間相關」的這一個循環
-        // 如果這個時間點連 20 分鐘的消失期都過完了，代表此輪徹底結束，推進到下一輪
-        if (currentNextSpawn + DESPAWN <= now.getTime()) {
-            currentNextSpawn += currentCollected ? CYCLE_COLLECTED : CYCLE;
-            currentCollected = false; // 下一輪開始不再繼承採集狀態
-
-            while (currentNextSpawn + DESPAWN <= now.getTime()) {
-                currentNextSpawn += CYCLE;
-            }
+        while (currentNextSpawn + DESPAWN <= now.getTime()) {
+            currentNextSpawn += CYCLE;
         }
 
         const remaining = currentNextSpawn - now.getTime();
@@ -895,8 +887,8 @@ class SoulstoneTracker {
                     : 'timer-countdown warning';
             } else {
                 this.alarmState[mapId] = false;
-                statusEl.textContent = currentCollected ? t('collected') : t('notCollected');
-                statusEl.className = currentCollected ? 'map-status active' : 'map-status warning';
+                statusEl.textContent = state.collectedUsed ? t('collected') : t('notCollected');
+                statusEl.className = state.collectedUsed ? 'map-status active' : 'map-status warning';
                 cardEl.classList.remove('urgent', 'soon');
                 countdownEl.className = 'timer-countdown';
             }
@@ -908,7 +900,7 @@ class SoulstoneTracker {
         // === Phase 2: 靈石已出現，消失倒數 (0 <= spawnAge < 20min) ===
         if (spawnAge < DESPAWN) {
             const despawnRemaining = DESPAWN - spawnAge;
-            const nextCycleTime = new Date(currentNextSpawn + (currentCollected ? CYCLE_COLLECTED : CYCLE));
+            const nextCycleTime = new Date(currentNextSpawn + CYCLE);
 
             nextEl.textContent = this.formatTime(nextCycleTime);
             if (timerLabel) timerLabel.textContent = t('despawning');
