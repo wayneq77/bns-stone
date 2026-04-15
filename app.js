@@ -389,37 +389,16 @@ class SoulstoneTracker {
                     (payload) => this.handleRealtimeUpdate(payload)
                 )
                 .on('broadcast', { event: 'sync' }, (payload) => {
-                    if (payload.payload) { // Supabase wraps broadcast data
-                        const rawPayload = payload.payload;
-                        if (rawPayload.mapId && rawPayload.mapId.startsWith(`${currentServer}_`)) {
-                            const localMapId = rawPayload.mapId.replace(`${currentServer}_`, '');
-                            this.state[localMapId] = {
-                                ...this.state[localMapId],
-                                ...rawPayload.data
-                            };
-                            // Parse string dates back to Date objects
+                    const rawPayload = payload.payload || payload;
+                    const mapIdStr = rawPayload.mapId;
+                    if (mapIdStr && mapIdStr.startsWith(`${currentServer}_`)) {
+                        const localMapId = mapIdStr.replace(`${currentServer}_`, '');
+                        if (this.state[localMapId] && rawPayload.data) {
                             this.state[localMapId].nextSpawn = rawPayload.data.nextSpawn ? new Date(rawPayload.data.nextSpawn) : null;
                             this.state[localMapId].lastUpdated = rawPayload.data.lastUpdated ? new Date(rawPayload.data.lastUpdated) : null;
-                            this.state[localMapId].cycleEndTime = rawPayload.data.cycleEndTime ? new Date(rawPayload.data.cycleEndTime) : null;
+                            this.state[localMapId].collectedUsed = rawPayload.data.collectedUsed ?? false;
                             this.state[localMapId].baseTime = rawPayload.data.baseTime ? new Date(rawPayload.data.baseTime) : null;
-
                             this.updateDisplay(localMapId);
-                        }
-                    } else {
-                        // Fallback for older code version, not applying server scope
-                        const rawPayload = payload;
-                        if (rawPayload.mapId) {
-                            this.state[rawPayload.mapId] = {
-                                ...this.state[rawPayload.mapId],
-                                ...rawPayload.data
-                            };
-                            // Parse string dates back to Date objects
-                            this.state[rawPayload.mapId].nextSpawn = rawPayload.data.nextSpawn ? new Date(rawPayload.data.nextSpawn) : null;
-                            this.state[rawPayload.mapId].lastUpdated = rawPayload.data.lastUpdated ? new Date(rawPayload.data.lastUpdated) : null;
-                            this.state[rawPayload.mapId].cycleEndTime = rawPayload.data.cycleEndTime ? new Date(rawPayload.data.cycleEndTime) : null;
-                            this.state[rawPayload.mapId].baseTime = rawPayload.data.baseTime ? new Date(rawPayload.data.baseTime) : null;
-
-                            this.updateDisplay(rawPayload.mapId);
                         }
                     }
                 })
@@ -521,9 +500,7 @@ class SoulstoneTracker {
         const data = {
             map_id: serverMapId,
             next_spawn: this.state[mapId].nextSpawn ? this.state[mapId].nextSpawn.toISOString() : null,
-            spawn_minutes: this.state[mapId].spawnMinutes,
             collected_used: this.state[mapId].collectedUsed,
-            cycle_end_time: this.state[mapId].cycleEndTime ? this.state[mapId].cycleEndTime.toISOString() : null,
             base_time: this.state[mapId].baseTime ? this.state[mapId].baseTime.toISOString() : null,
             updated_at: this.getCurrentServerTime().toISOString()
         };
@@ -548,10 +525,8 @@ class SoulstoneTracker {
                         isManual: isManual,
                         data: {
                             nextSpawn: this.state[mapId].nextSpawn?.toISOString(),
-                            spawnMinutes: this.state[mapId].spawnMinutes,
                             lastUpdated: this.state[mapId].lastUpdated?.toISOString(),
                             collectedUsed: this.state[mapId].collectedUsed,
-                            cycleEndTime: this.state[mapId].cycleEndTime?.toISOString(),
                             baseTime: this.state[mapId].baseTime ? this.state[mapId].baseTime.toISOString() : null
                         }
                     }
@@ -580,7 +555,6 @@ class SoulstoneTracker {
                             ...data.maps[serverMapId],
                             nextSpawn: data.maps[serverMapId].nextSpawn ? new Date(data.maps[serverMapId].nextSpawn) : null,
                             lastUpdated: data.maps[serverMapId].lastUpdated ? new Date(data.maps[serverMapId].lastUpdated) : null,
-                            cycleEndTime: data.maps[serverMapId].cycleEndTime ? new Date(data.maps[serverMapId].cycleEndTime) : null,
                             baseTime: data.maps[serverMapId].baseTime ? new Date(data.maps[serverMapId].baseTime) : null
                         };
                     }

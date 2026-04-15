@@ -221,6 +221,17 @@ body {
     margin: 8px 0;
 }
 
+/* Channel badge on card header */
+.ch-badge {
+    font-size: 0.65rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 700;
+    color: white;
+}
+.ch-badge.ch1 { background: #6366f1; }
+.ch-badge.ch2 { background: #8b5cf6; }
+
 /* ================================
    Map Card
 ================================ */
