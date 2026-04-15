@@ -702,22 +702,38 @@ class SoulstoneTracker {
     async markCollected(mapId) {
         const mapState = this.state[mapId];
 
-        if (mapState.collectedUsed) {
-            console.log('這輪已使用過「已撿完」');
+        const now = this.getCurrentServerTime();
+        let currentNextSpawn = mapState.nextSpawn ? mapState.nextSpawn.getTime() : 0;
+        
+        if (!currentNextSpawn) return false;
+
+        // 計算目前實際位於哪個循環
+        while (currentNextSpawn + CONFIG.DESPAWN_WINDOW <= now.getTime()) {
+            currentNextSpawn += CONFIG.DEFAULT_INTERVAL; // 140m
+        }
+        
+        const isCurrentCycleCollected = (currentNextSpawn === mapState.nextSpawn.getTime()) ? mapState.collectedUsed : false;
+
+        if (isCurrentCycleCollected) {
+            this.showToast('這輪已使用過「已撿完」');
             return false;
+        }
+
+        const remaining = currentNextSpawn - now.getTime();
+        let newTargetTime;
+        if (remaining <= 30 * 60 * 1000) {
+            // 出現中或即將出現：下次時間直接加上 120m
+            newTargetTime = currentNextSpawn + CONFIG.COLLECTED_INTERVAL;
+        } else {
+            // 等待中：時間縮減 20m
+            newTargetTime = currentNextSpawn - (CONFIG.DEFAULT_INTERVAL - CONFIG.COLLECTED_INTERVAL);
         }
 
         if (!this.supabase) {
             // Fallback: 本地計算
             mapState.collectedUsed = true;
-            const now = new Date();
-            const remaining = mapState.nextSpawn.getTime() - now.getTime();
-            if (remaining <= 30 * 60 * 1000) {
-                mapState.nextSpawn = new Date(mapState.nextSpawn.getTime() + CONFIG.COLLECTED_INTERVAL);
-                mapState.cycleEndTime = mapState.nextSpawn;
-            } else {
-                mapState.nextSpawn = new Date(mapState.nextSpawn.getTime() - (CONFIG.DEFAULT_INTERVAL - CONFIG.COLLECTED_INTERVAL));
-            }
+            mapState.nextSpawn = new Date(newTargetTime);
+            mapState.cycleEndTime = mapState.nextSpawn;
             this.saveToLocalStorage();
             this.updateDisplay(mapId);
             this.showToast(t('toastCollected'));
@@ -727,23 +743,28 @@ class SoulstoneTracker {
         const serverMapId = `${currentServer}_${mapId}`;
         const start = Date.now();
         try {
-            const { data, error } = await this.supabase.rpc('mark_collected_fn', {
-                p_map_id: serverMapId
-            });
+            // 使用直接 table update 來迴避有 bug 的 RPC func
+            const { data, error } = await this.supabase
+                .from('soulstone_timers')
+                .update({ 
+                    next_spawn: new Date(newTargetTime).toISOString(), 
+                    collected_used: true, 
+                    updated_at: new Date().toISOString()
+                })
+                .eq('map_id', serverMapId)
+                .select()
+                .single();
+
             if (error) throw error;
 
-            if (data.error === 'already_collected') {
-                this.showToast('這輪已使用過「已撿完」功能');
-                return false;
-            }
-            if (data.error === 'no_spawn_set') {
-                this.showToast('請先按「已出現靈石」設定時間');
-                return false;
-            }
+            this.applyRpcResult(mapId, {
+                next_spawn: data.next_spawn,
+                collected_used: data.collected_used,
+                server_now: new Date().toISOString()
+            }, start);
 
-            this.applyRpcResult(mapId, data, start);
             this.showToast(t('toastCollected'));
-            console.log(`[RPC] mark_collected_fn(${mapId}) 成功`);
+            console.log(`[DB] 已撿完更新成功(${mapId}): new_next_spawn=${data.next_spawn}`);
             return true;
         } catch (e) {
             console.error('[RPC] mark_collected_fn 失敗:', e);
@@ -865,6 +886,7 @@ class SoulstoneTracker {
 
         const remaining = currentNextSpawn - now.getTime();
         const spawnAge = -remaining; // 正數代表已經過了出現時間多久
+        const isCurrentCycleCollected = (currentNextSpawn === state.nextSpawn.getTime()) ? state.collectedUsed : false;
 
         // === Phase 1: 等待出現 (remaining > 0) ===
         if (remaining > 0) {
@@ -887,13 +909,13 @@ class SoulstoneTracker {
                     : 'timer-countdown warning';
             } else {
                 this.alarmState[mapId] = false;
-                statusEl.textContent = state.collectedUsed ? t('collected') : t('notCollected');
-                statusEl.className = state.collectedUsed ? 'map-status active' : 'map-status warning';
+                statusEl.textContent = isCurrentCycleCollected ? t('collected') : t('notCollected');
+                statusEl.className = isCurrentCycleCollected ? 'map-status active' : 'map-status warning';
                 cardEl.classList.remove('urgent', 'soon');
                 countdownEl.className = 'timer-countdown';
             }
 
-            this.updateCollectedBtnState(collectedBtn, state, true);
+            this.updateCollectedBtnState(collectedBtn, state, true, isCurrentCycleCollected);
             return;
         }
 
@@ -911,12 +933,12 @@ class SoulstoneTracker {
             cardEl.classList.add('urgent');
             cardEl.classList.remove('soon');
 
-            this.updateCollectedBtnState(collectedBtn, state, true);
+            this.updateCollectedBtnState(collectedBtn, state, true, isCurrentCycleCollected);
             return;
         }
     }
 
-    updateCollectedBtnState(btn, state, hasTimer) {
+    updateCollectedBtnState(btn, state, hasTimer, isCollected = false) {
         if (!hasTimer || !state.nextSpawn) {
             btn.classList.remove('used', 'disabled');
             btn.disabled = false;
@@ -924,7 +946,7 @@ class SoulstoneTracker {
             return;
         }
 
-        if (state.collectedUsed) {
+        if (isCollected) {
             // 已使用過（按鈕變暗，但維持文字）
             btn.classList.add('used');
             btn.classList.remove('disabled');
