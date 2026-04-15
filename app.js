@@ -202,6 +202,32 @@ class SoulstoneTracker {
         this.serverTimeOffset = 0; // 伺服器與本地時間的毫秒差 (Supabase - Local)
         this.lastSyncTime = null;
 
+        // Audio Context unlocker for Autoplay policies
+        this.audioCtx = null;
+        this.hasInteracted = false;
+        
+        const unlockAudio = () => {
+            if (this.hasInteracted) return;
+            this.hasInteracted = true;
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    this.audioCtx = new AudioContext();
+                    if (this.audioCtx.state === 'suspended') {
+                        this.audioCtx.resume();
+                    }
+                }
+            } catch (e) {}
+            
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('keydown', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        };
+        
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('keydown', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+
         this.init();
     }
 
@@ -1075,11 +1101,11 @@ class SoulstoneTracker {
     }
 
     playAlarm() {
-        if (!this.alarmEnabled) return;
+        if (!this.alarmEnabled || !this.hasInteracted || !this.audioCtx) return;
+
         try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
-            const ctx = new AudioContext();
+            const ctx = this.audioCtx;
+            if (ctx.state === 'suspended') return; // Do not attempt to play if suspended
             
             // 產生一個清脆的雙聲提示音效 ("Ding-Dong")
             const playTone = (freq, startTime, duration) => {
@@ -1102,7 +1128,7 @@ class SoulstoneTracker {
             playTone(880, now, 0.5);       // A5
             playTone(1108.73, now + 0.15, 0.5); // C#6
         } catch (e) {
-            console.error('Audio play failed', e);
+            // fail silently for audio errors
         }
     }
 
