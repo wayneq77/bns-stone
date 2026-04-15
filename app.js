@@ -19,12 +19,18 @@ const CONFIG = {
     // Supabase config (loaded from Cloudflare Pages via window.APP_CONFIG)
     SUPABASE_URL: window.APP_CONFIG?.SUPABASE_URL || '',
     SUPABASE_KEY: window.APP_CONFIG?.SUPABASE_KEY || '',
-    // Map definitions
+    // Despawn window: 20 minutes after spawn
+    DESPAWN_WINDOW: 20 * 60 * 1000,
+    // Map definitions (4 maps × 2 channels = 8 entries)
     MAPS: [
-        { id: 'spirit-stone-valley', name: '靈石谷', icon: '🏔️' },
-        { id: 'yu-hwang-fortress', name: '玉皇要塞', icon: '🏯' },
-        { id: 'blood-ruffian-base', name: '糾土地帶', icon: '🩸' },
-        { id: 'red-dragon-forge', name: '赤龍火山', icon: '🌋' }
+        { id: 'spirit-stone-valley-ch1', name: '靈石谷', channel: 1, icon: '🏔️' },
+        { id: 'spirit-stone-valley-ch2', name: '靈石谷', channel: 2, icon: '🏔️' },
+        { id: 'yu-hwang-fortress-ch1',   name: '玉皇要塞', channel: 1, icon: '🏯' },
+        { id: 'yu-hwang-fortress-ch2',   name: '玉皇要塞', channel: 2, icon: '🏯' },
+        { id: 'blood-ruffian-base-ch1',  name: '糾土地帶', channel: 1, icon: '🩸' },
+        { id: 'blood-ruffian-base-ch2',  name: '糾土地帶', channel: 2, icon: '🩸' },
+        { id: 'red-dragon-forge-ch1',    name: '赤龍火山', channel: 1, icon: '🌋' },
+        { id: 'red-dragon-forge-ch2',    name: '赤龍火山', channel: 2, icon: '🌋' }
     ]
 };
 
@@ -49,10 +55,14 @@ const I18N = {
         'btnUpcoming': '即將出現靈石',
         'btnCollected': '已撿完',
         // maps
-        'spirit-stone-valley': '靈石谷',
-        'yu-hwang-fortress': '玉皇要塞',
-        'blood-ruffian-base': '糾土地帶',
-        'red-dragon-forge': '赤龍火山',
+        'spirit-stone-valley-ch1': '靈石谷 Ch.1',
+        'spirit-stone-valley-ch2': '靈石谷 Ch.2',
+        'yu-hwang-fortress-ch1': '玉皇要塞 Ch.1',
+        'yu-hwang-fortress-ch2': '玉皇要塞 Ch.2',
+        'blood-ruffian-base-ch1': '糾土地帶 Ch.1',
+        'blood-ruffian-base-ch2': '糾土地帶 Ch.2',
+        'red-dragon-forge-ch1': '赤龍火山 Ch.1',
+        'red-dragon-forge-ch2': '赤龍火山 Ch.2',
         // toasts & modals
         'toastShorten': '✅ 採集完成！已縮短 20 分鐘',
         'toastCollected': '✅ 採集完成！下輪出現時間：120 分鐘後',
@@ -90,10 +100,14 @@ const I18N = {
         'btnUpcoming': 'Upcoming',
         'btnCollected': 'Collected',
         // maps
-        'spirit-stone-valley': 'Spirit Stone Valley',
-        'yu-hwang-fortress': 'Yu Hwang Fortress',
-        'blood-ruffian-base': 'Blood Ruffian Base',
-        'red-dragon-forge': 'Red Dragon Forge',
+        'spirit-stone-valley-ch1': 'Spirit Stone Valley Ch.1',
+        'spirit-stone-valley-ch2': 'Spirit Stone Valley Ch.2',
+        'yu-hwang-fortress-ch1': 'Yu Hwang Fortress Ch.1',
+        'yu-hwang-fortress-ch2': 'Yu Hwang Fortress Ch.2',
+        'blood-ruffian-base-ch1': 'Blood Ruffian Base Ch.1',
+        'blood-ruffian-base-ch2': 'Blood Ruffian Base Ch.2',
+        'red-dragon-forge-ch1': 'Red Dragon Forge Ch.1',
+        'red-dragon-forge-ch2': 'Red Dragon Forge Ch.2',
         // toasts & modals
         'toastShorten': '✅ Collected! Timer shortened by 20m',
         'toastCollected': '✅ Collected! Next spawn in 120m',
@@ -162,14 +176,14 @@ class SoulstoneTracker {
         CONFIG.MAPS.forEach(map => {
             this.state[map.id] = {
                 nextSpawn: null,
-                spawnMinutes: [0, 20, 40],
                 lastUpdated: null,
-                // 新增：追蹤已撿完狀態
-                collectedUsed: false,     // 這輪是否已使用「已撿完」
-                cycleEndTime: null,        // 這輪結束時間
-                baseTime: null            // 這輪基準時間（用於計算下次）
+                collectedUsed: false,
+                baseTime: null    // 靈石真正出現的時間（用於消失倒數，不受微調影響）
             };
         });
+
+        // Generate cards dynamically from CONFIG
+        this.generateCards();
 
         // Try to initialize Supabase
         this.initSupabase();
@@ -182,6 +196,60 @@ class SoulstoneTracker {
 
         // Check notification permission
         this.checkNotificationPermission();
+    }
+
+    /**
+     * 從 CONFIG.MAPS 動態產生卡片
+     */
+    generateCards() {
+        const grid = document.querySelector('.maps-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        CONFIG.MAPS.forEach(map => {
+            const chLabel = map.channel ? ` Ch.${map.channel}` : '';
+            const card = document.createElement('div');
+            card.className = 'map-card';
+            card.id = `card-${map.id}`;
+            card.dataset.map = map.id;
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="map-icon">${map.icon}</div>
+                    <div class="map-info">
+                        <h2 class="map-name">${map.name}${chLabel}</h2>
+                        <span class="map-status" id="status-${map.id}">等待設定</span>
+                    </div>
+                </div>
+                <div class="timer-display" id="timer-${map.id}">
+                    <div class="timer-row">
+                        <span class="timer-label" data-i18n="nextSpawn">下次出現</span>
+                        <div class="timer-value-container">
+                            <span class="timer-value" id="next-${map.id}">--:--:--</span>
+                            <div class="adjust-btns">
+                                <button class="btn-adjust" data-action="adjust" data-amount="-10" data-map="${map.id}">-10</button>
+                                <button class="btn-adjust" data-action="adjust" data-amount="-1" data-map="${map.id}">-1</button>
+                                <button class="btn-adjust" data-action="adjust" data-amount="1" data-map="${map.id}">+1</button>
+                                <button class="btn-adjust" data-action="adjust" data-amount="10" data-map="${map.id}">+10</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="timer-row">
+                        <span class="timer-label" id="timer-label-${map.id}" data-i18n="remaining">剩餘</span>
+                        <span class="timer-countdown" id="countdown-${map.id}">--:--:--</span>
+                    </div>
+                </div>
+                <div class="card-actions">
+                    <div class="actions-top">
+                        <button class="btn btn-primary set-btn" data-action="set" data-map="${map.id}">已出現靈石</button>
+                        <button class="btn btn-info interval-btn" data-action="interval" data-map="${map.id}">即將出現靈石</button>
+                    </div>
+                    <div class="actions-bottom">
+                        <button class="btn btn-success collected-btn" data-action="collected" data-map="${map.id}">已撿完</button>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
     }
 
     // ================================
@@ -292,12 +360,14 @@ class SoulstoneTracker {
         }
 
         // 更新本地狀態
-        this.state[mapId].nextSpawn = result.next_spawn ? new Date(result.next_spawn) : null;
-        this.state[mapId].cycleEndTime = result.cycle_end_time ? new Date(result.cycle_end_time) : null;
-        this.state[mapId].collectedUsed = result.collected_used ?? false;
-        this.state[mapId].lastUpdated = result.updated_at ? new Date(result.updated_at) : new Date();
+        if (this.state[mapId]) {
+            this.state[mapId].nextSpawn = result.next_spawn ? new Date(result.next_spawn) : null;
+            this.state[mapId].baseTime = result.base_time ? new Date(result.base_time) : null;
+            this.state[mapId].collectedUsed = result.collected_used ?? false;
+            this.state[mapId].lastUpdated = result.updated_at ? new Date(result.updated_at) : new Date();
 
-        this.updateDisplay(mapId);
+            this.updateDisplay(mapId);
+        }
         this.updateLastUpdated();
     }
 
@@ -406,26 +476,11 @@ class SoulstoneTracker {
                     const localMapId = row.map_id.replace(`${currentServer}_`, '');
                     if (this.state[localMapId]) {
                         this.state[localMapId].nextSpawn = row.next_spawn ? new Date(row.next_spawn) : null;
-                        this.state[localMapId].spawnMinutes = row.spawn_minutes || [0, 20, 40];
                         this.state[localMapId].lastUpdated = new Date(row.updated_at);
-                        // 還原額外狀態
-                        if (row.collected_used !== undefined) {
-                            this.state[localMapId].collectedUsed = row.collected_used;
-                        }
-                        if (row.cycle_end_time) {
-                            this.state[localMapId].cycleEndTime = new Date(row.cycle_end_time);
-                        }
-                        if (row.base_time) {
-                            this.state[localMapId].baseTime = new Date(row.base_time);
-                        }
+                        this.state[localMapId].collectedUsed = row.collected_used ?? false;
+                        this.state[localMapId].baseTime = row.base_time ? new Date(row.base_time) : null;
                     }
                 });
-
-                // 計算伺服器時間偏移：取最後一個更新紀錄的 updated_at 作為基準 (簡化版處理)
-                const latestRecord = data.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
-                if (latestRecord) {
-                    // 這邊僅輔助用，真正的漂移透過 handleRealtimeUpdate 的攔截來處理
-                }
 
                 this.updateAllDisplays();
                 this.updateLastUpdated();
@@ -444,25 +499,11 @@ class SoulstoneTracker {
 
             const localMapId = serverMapId.replace(`${currentServer}_`, '');
             if (localMapId && this.state[localMapId]) {
-                const newState = {
-                    nextSpawn: newRecord.next_spawn ? new Date(newRecord.next_spawn) : null,
-                    collectedUsed: newRecord.collected_used,
-                    cycleEndTime: newRecord.cycle_end_time ? new Date(newRecord.cycle_end_time) : null,
-                    baseTime: newRecord.base_time ? new Date(newRecord.base_time) : null,
-                    updatedAt: new Date(newRecord.updated_at)
-                };
-
-                // --- 資料庫變更事件：無條件信任 ---
-                // postgres_changes 代表已確認寫入資料庫的資料，是權威來源。
-                // 不再過濾任何更新，確保所有裝置能即時同步微調操作。
                 console.log(`[RealtimeSync] 收到資料庫更新 (${localMapId})，同步中...`);
-
-                this.state[localMapId].nextSpawn = newState.nextSpawn;
-                this.state[localMapId].spawnMinutes = newRecord.spawn_minutes || [0, 20, 40];
-                this.state[localMapId].lastUpdated = newState.updatedAt;
-                this.state[localMapId].collectedUsed = newState.collectedUsed;
-                this.state[localMapId].cycleEndTime = newState.cycleEndTime;
-                this.state[localMapId].baseTime = newState.baseTime;
+                this.state[localMapId].nextSpawn = newRecord.next_spawn ? new Date(newRecord.next_spawn) : null;
+                this.state[localMapId].lastUpdated = new Date(newRecord.updated_at);
+                this.state[localMapId].collectedUsed = newRecord.collected_used ?? false;
+                this.state[localMapId].baseTime = newRecord.base_time ? new Date(newRecord.base_time) : null;
                 
                 this.updateAllDisplays();
                 this.updateLastUpdated();
@@ -798,17 +839,34 @@ class SoulstoneTracker {
         }
     }
 
+    /**
+     * ====================================================================
+     * updateDisplay - 核心顯示邏輯（v3 完全重寫）
+     * 
+     * 設計原則：
+     * 1. 此函數「只讀不寫」— 永遠不修改 state 或寫入 DB
+     * 2. 自動推進透過純計算處理，不觸發任何副作用
+     * 3. 微調按鈕永遠不會意外觸發循環推進
+     * 
+     * 三個顯示階段：
+     * Phase 1 (remaining > 0): 等待出現 → 顯示倒數
+     * Phase 2 (0 < spawnAge < 20min): 靈石已出現 → 消失倒數
+     * Phase 3 (spawnAge >= 20min): 已消失 → 計算下一輪倒數（純顯示）
+     * ====================================================================
+     */
     updateDisplay(mapId) {
         const state = this.state[mapId];
         const now = this.getCurrentServerTime();
 
-        // Update timer value
         const nextEl = document.getElementById(`next-${mapId}`);
         const countdownEl = document.getElementById(`countdown-${mapId}`);
         const statusEl = document.getElementById(`status-${mapId}`);
         const cardEl = document.getElementById(`card-${mapId}`);
+        if (!cardEl) return;
         const collectedBtn = cardEl.querySelector('.collected-btn');
+        const timerLabel = document.getElementById(`timer-label-${mapId}`);
 
+        // --- 無資料：等待設定 ---
         if (!state.nextSpawn) {
             nextEl.textContent = '--:--:--';
             countdownEl.textContent = '--:--:--';
@@ -819,112 +877,99 @@ class SoulstoneTracker {
             return;
         }
 
-        // Format next spawn time natively (will be overridden below if active)
-        nextEl.textContent = this.formatTime(state.nextSpawn);
-        const timerLabel = countdownEl.previousElementSibling;
-
-        // Calculate remaining time
         const remaining = state.nextSpawn.getTime() - now.getTime();
+        const spawnAge = -remaining; // 靈石出現後經過多久（正數才有意義）
+        const DESPAWN = CONFIG.DESPAWN_WINDOW;
+        const CYCLE = CONFIG.DEFAULT_INTERVAL;
+        const CYCLE_COLLECTED = CONFIG.COLLECTED_INTERVAL;
 
-        // 檢查並觸發音效警報 (剩餘時間 <= 警告時間)
-        if (remaining <= CONFIG.WARNING_BEFORE && remaining > 0) {
-            if (!this.alarmState[mapId]) {
-                this.alarmState[mapId] = true;
-                this.playAlarm();
-            }
-        } else if (remaining > CONFIG.WARNING_BEFORE) {
-            // 已被重置到未來，重新解鎖警報
-            this.alarmState[mapId] = false;
-        }
-
-        // 已經超過存在時間 (20分鐘)，自動將排程推到下一輪 (未撿完的 140分鐘)
-        if (remaining <= -20 * 60 * 1000) {
-            if (this.supabase && !this._autoAdvancePending?.[mapId]) {
-                // 用伺服器端 RPC 推進，避免客戶端時鐘問題
-                if (!this._autoAdvancePending) this._autoAdvancePending = {};
-                this._autoAdvancePending[mapId] = true;
-                const serverMapId = `${currentServer}_${mapId}`;
-                const start = Date.now();
-                this.supabase.rpc('auto_advance_spawn', { p_map_id: serverMapId }).then(({ data, error }) => {
-                    delete this._autoAdvancePending[mapId];
-                    if (!error && data) {
-                        this.applyRpcResult(mapId, data, start);
-                        console.log(`[RPC] auto_advance_spawn(${mapId}) 成功`);
-                    } else {
-                        console.error('[RPC] auto_advance_spawn 失敗:', error);
-                        // Fallback
-                        state.nextSpawn = new Date(state.nextSpawn.getTime() + 140 * 60 * 1000);
-                        state.collectedUsed = false;
-                        this.saveToSupabase(mapId, false);
-                    }
-                });
-            } else if (!this.supabase) {
-                // 離線 Fallback
-                state.nextSpawn = new Date(state.nextSpawn.getTime() + 140 * 60 * 1000);
-                state.collectedUsed = false;
-                this.saveToLocalStorage();
-            }
-            // 暫時先用本地推進來更新畫面（RPC 回來後會覆蓋）
-            if (!this.supabase) {
-                return this.updateDisplay(mapId);
-            }
-            return;
-        }
-
-        // 檢查是否已過了cycleEndTime，解除「已撿完」限制
-        if (state.cycleEndTime && now >= state.cycleEndTime) {
-            state.collectedUsed = false;
-        }
-
-        if (remaining <= 0) {
-            // Spawn is active! showing the time left until despawn
-            const despawnRemaining = (20 * 60 * 1000) + remaining;
-            
-            // 下次出現時間要往後推 140 分鐘來顯示 (滿足玩家看到下一輪時間的需求)
-            const nextCycleTime = new Date(state.nextSpawn.getTime() + 140 * 60 * 1000);
-            nextEl.textContent = this.formatTime(nextCycleTime);
-
-            if (timerLabel) timerLabel.textContent = t('despawning'); // changed to 消失倒數
-            countdownEl.textContent = this.formatDuration(despawnRemaining);
-            countdownEl.className = 'timer-countdown danger';
-            statusEl.textContent = t('spawning'); // which now translates to 已出現
-            statusEl.className = 'map-status danger';
-            cardEl.classList.add('urgent');
-            cardEl.classList.remove('soon');
-        } else {
-            // Show countdown
-            nextEl.textContent = this.formatTime(state.nextSpawn); // revert back to normal
-
+        // === Phase 1: 等待出現 (remaining > 0) ===
+        if (remaining > 0) {
+            nextEl.textContent = this.formatTime(state.nextSpawn);
             if (timerLabel) timerLabel.textContent = t('remaining');
             countdownEl.textContent = this.formatDuration(remaining);
-            
-            // 根據collectedUsed顯示狀態
-            if (state.collectedUsed) {
-                statusEl.textContent = t('collected');
-                statusEl.className = 'map-status active';
-            } else if (remaining <= CONFIG.WARNING_BEFORE) {
+
+            // 警報
+            if (remaining <= CONFIG.WARNING_BEFORE) {
+                if (!this.alarmState[mapId]) {
+                    this.alarmState[mapId] = true;
+                    this.playAlarm();
+                }
                 statusEl.textContent = t('statusUpcoming');
                 statusEl.className = 'map-status danger';
-            } else {
-                statusEl.textContent = t('notCollected');
-                statusEl.className = 'map-status warning';
-            }
-            
-            cardEl.classList.remove('urgent');
-
-            // Add 'soon' class when within warning time
-            if (remaining <= CONFIG.WARNING_BEFORE) {
                 cardEl.classList.add('soon');
+                cardEl.classList.remove('urgent');
                 countdownEl.className = remaining <= CONFIG.DANGER_BEFORE
                     ? 'timer-countdown danger'
                     : 'timer-countdown warning';
             } else {
-                cardEl.classList.remove('soon');
+                this.alarmState[mapId] = false;
+                statusEl.textContent = state.collectedUsed ? t('collected') : t('notCollected');
+                statusEl.className = state.collectedUsed ? 'map-status active' : 'map-status warning';
+                cardEl.classList.remove('urgent', 'soon');
                 countdownEl.className = 'timer-countdown';
             }
+
+            this.updateCollectedBtnState(collectedBtn, state, true);
+            return;
         }
 
-        // 更新「已撿完」按鈕狀態
+        // === Phase 2: 靈石已出現，消失倒數 (0 < spawnAge < 20min) ===
+        if (spawnAge < DESPAWN) {
+            const despawnRemaining = DESPAWN - spawnAge;
+            const nextCycleTime = new Date(state.nextSpawn.getTime() + CYCLE);
+
+            nextEl.textContent = this.formatTime(nextCycleTime);
+            if (timerLabel) timerLabel.textContent = t('despawning');
+            countdownEl.textContent = this.formatDuration(despawnRemaining);
+            countdownEl.className = 'timer-countdown danger';
+            statusEl.textContent = t('spawning');
+            statusEl.className = 'map-status danger';
+            cardEl.classList.add('urgent');
+            cardEl.classList.remove('soon');
+
+            this.updateCollectedBtnState(collectedBtn, state, true);
+            return;
+        }
+
+        // === Phase 3: 已消失，計算下一輪（純顯示計算，不寫 DB！） ===
+        const firstCycle = state.collectedUsed ? CYCLE_COLLECTED : CYCLE;
+        let effectiveNext = new Date(state.nextSpawn.getTime() + firstCycle);
+        let effectiveCollected = state.collectedUsed;
+
+        // 如果第一輪也過了，用 140min 循環繼續推進
+        while (effectiveNext.getTime() <= now.getTime()) {
+            effectiveNext = new Date(effectiveNext.getTime() + CYCLE);
+            effectiveCollected = false; // 新循環重置
+        }
+
+        const effectiveRemaining = effectiveNext.getTime() - now.getTime();
+
+        nextEl.textContent = this.formatTime(effectiveNext);
+        if (timerLabel) timerLabel.textContent = t('remaining');
+        countdownEl.textContent = this.formatDuration(effectiveRemaining);
+
+        // 警報 (下一輪即將出現)
+        if (effectiveRemaining <= CONFIG.WARNING_BEFORE) {
+            if (!this.alarmState[mapId]) {
+                this.alarmState[mapId] = true;
+                this.playAlarm();
+            }
+            statusEl.textContent = t('statusUpcoming');
+            statusEl.className = 'map-status danger';
+            cardEl.classList.add('soon');
+            cardEl.classList.remove('urgent');
+            countdownEl.className = effectiveRemaining <= CONFIG.DANGER_BEFORE
+                ? 'timer-countdown danger'
+                : 'timer-countdown warning';
+        } else {
+            this.alarmState[mapId] = false;
+            statusEl.textContent = effectiveCollected ? t('collected') : t('notCollected');
+            statusEl.className = effectiveCollected ? 'map-status active' : 'map-status warning';
+            cardEl.classList.remove('urgent', 'soon');
+            countdownEl.className = 'timer-countdown';
+        }
+
         this.updateCollectedBtnState(collectedBtn, state, true);
     }
 
