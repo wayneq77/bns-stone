@@ -755,15 +755,9 @@ class SoulstoneTracker {
             return false;
         }
 
-        const remaining = currentNextSpawn - now.getTime();
-        let newTargetTime;
-        if (remaining <= 30 * 60 * 1000) {
-            // 出現中或即將出現：下次時間直接加上 120m
-            newTargetTime = currentNextSpawn + CONFIG.COLLECTED_INTERVAL;
-        } else {
-            // 等待中：時間縮減 20m
-            newTargetTime = currentNextSpawn - (CONFIG.DEFAULT_INTERVAL - CONFIG.COLLECTED_INTERVAL);
-        }
+        // 依照使用者指示：「最後一顆石頭被手動撿完，此時你在網頁按下已撿完，下次出現是當前時間 + 120分鐘」
+        // 不再拘泥於原本的循環，直接以「按下按鈕的瞬間 (ToD)」起算 120 分鐘作為下次出現時間
+        let newTargetTime = now.getTime() + 120 * 60 * 1000;
 
         if (!this.supabase) {
             // Fallback: 本地計算
