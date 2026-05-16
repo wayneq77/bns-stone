@@ -267,9 +267,9 @@ class SoulstoneTracker {
                             <span class="timer-value" id="next-${map.id}">--:--:--</span>
                             <div class="adjust-btns">
                                 <button class="btn-adjust" data-action="adjust" data-amount="-10" data-map="${map.id}">-10</button>
+                                <button class="btn-adjust" data-action="adjust" data-amount="10" data-map="${map.id}">+10</button>
                                 <button class="btn-adjust" data-action="adjust" data-amount="-1" data-map="${map.id}">-1</button>
                                 <button class="btn-adjust" data-action="adjust" data-amount="1" data-map="${map.id}">+1</button>
-                                <button class="btn-adjust" data-action="adjust" data-amount="10" data-map="${map.id}">+10</button>
                             </div>
                         </div>
                     </div>

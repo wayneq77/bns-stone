@@ -380,7 +380,7 @@ body {
 }
 
 .timer-value {
-    font-size: 1.15rem; /* Reduced from 1.35rem to prevent overflow */
+    font-size: 1.35rem; /* Reverted to original size */
     font-weight: 700;
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
