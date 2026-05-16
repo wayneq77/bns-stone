@@ -22,8 +22,8 @@ const CONFIG = {
     DEFAULT_INTERVAL: 160 * 60 * 1000,
     // When collected: 120 min
     COLLECTED_INTERVAL: 120 * 60 * 1000,
-    // Warning time: 5 minutes before spawn
-    WARNING_BEFORE: 5 * 60 * 1000,
+    // Warning time: 10 minutes before spawn
+    WARNING_BEFORE: 10 * 60 * 1000,
     // Danger time: 1 minute before spawn
     DANGER_BEFORE: 1 * 60 * 1000,
     // Supabase config (loaded from Cloudflare Pages via window.APP_CONFIG)
