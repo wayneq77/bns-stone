@@ -58,22 +58,39 @@
 
         <!-- 機制說明 / Mechanism Explanation -->
         <div class="explanation-box" style="margin-top: 2rem; padding: 1.5rem; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #d1d5db; font-size: 0.9rem; line-height: 1.6;">
-            <h3 style="color: var(--accent-gold); margin-top: 0; margin-bottom: 0.5rem; font-size: 1.1rem;">機制說明 / Mechanism Explanation</h3>
-            <p style="margin-bottom: 0.5rem;">
-                <span style="color: white; font-weight: bold;">[TW]</span> 目前預設靈石為「不會被撿乾淨」。靈石出現 20 分鐘自然消失後，系統會倒數 140 分鐘，也就是在它消失後的 <strong>140 分鐘（2小時20分）</strong> 後才會再次出現。<br>
-                如果靈石提前被撿乾淨，請務必點擊「已撿完」按鈕。點擊後系統會立即將下次出現時間設定為<strong>當下時間的 2 小時後</strong>。<br>
-                <strong>微調按鈕：</strong> 卡片上的 <code>+1</code> <code>-1</code> <code>+10</code> <code>-10</code> 是用來微調時間的。如果您晚了幾分鐘才設定，可以透過這些按鈕把時間倒退或往前推，讓倒數時間完全貼近真實的靈石出現時間！
-            </p>
-            <p style="margin: 0;">
-                <span style="color: white; font-weight: bold;">[EN]</span> By default, the system assumes stones are NOT fully collected. After a stone is active for 20 minutes and disappears naturally, the next spawn is set to <strong>140 minutes</strong> after its disappearance.<br>
-                If the stones are fully collected early, please click the "Collected" button. This instantly schedules the next spawn to exactly <strong>2 hours from the current time</strong>.<br>
-                <strong>Adjust Buttons:</strong> Use the <code>+1</code> <code>-1</code> <code>+10</code> <code>-10</code> buttons on the card to fine-tune the timer. If you set the spawn time a few minutes late, use these buttons to sync the countdown perfectly with the real spawn time.
-            </p>
+            <h3 style="color: var(--accent-gold); margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">機制說明 / Mechanism Explanation</h3>
+            
+            <div style="margin-bottom: 1.2rem;">
+                <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇹🇼 [TW] 繁體中文</div>
+                <ul style="margin: 0; padding-left: 20px;">
+                    <li><strong>自然消失 (預設)：</strong>靈石出現 20 分鐘後自動消失，接著系統會倒數 <strong>140 分鐘</strong>（2小時20分）才會再次出現。</li>
+                    <li><strong>手動點擊「已撿完」：</strong>若靈石提前被採集完畢，點擊按鈕後，下次出現時間將會強制設定為 <strong>當下時間的 120 分鐘後</strong>。</li>
+                    <li><strong>時間微調 (+1, -1 等)：</strong>如果您晚了幾分鐘才設定，請使用這些按鈕將時間往前或往後推，讓倒數完美貼近真實時間。</li>
+                </ul>
+            </div>
+
+            <div style="margin-bottom: 1.2rem;">
+                <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇬🇧 [EN] English</div>
+                <ul style="margin: 0; padding-left: 20px;">
+                    <li><strong>Auto Despawn (Default):</strong> Stones last for 20 minutes. After disappearing naturally, the next spawn is set to exactly <strong>140 minutes</strong> later.</li>
+                    <li><strong>Manual "Collected":</strong> If stones are fully collected early, clicking this button instantly schedules the next spawn to <strong>120 minutes</strong> from the current time.</li>
+                    <li><strong>Adjust Buttons (+1, -1, etc):</strong> If you set the timer late, use these to fine-tune the countdown to match the exact spawn time.</li>
+                </ul>
+            </div>
+
+            <div style="margin-bottom: 0;">
+                <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇹🇭 [TH] ภาษาไทย</div>
+                <ul style="margin: 0; padding-left: 20px;">
+                    <li><strong>หายไปเอง (ค่าเริ่มต้น):</strong> หินจะอยู่ 20 นาที หากหายไปเอง ระบบจะนับถอยหลัง <strong>140 นาที</strong> (2 ชั่วโมง 20 นาที) สำหรับรอบถัดไป</li>
+                    <li><strong>กดปุ่ม "เก็บหมดแล้ว":</strong> หากหินถูกเก็บหมดก่อนเวลา การกดปุ่มนี้จะตั้งเวลาเกิดใหม่เป็น <strong>120 นาที</strong> นับจากเวลาที่กดทันที</li>
+                    <li><strong>ปุ่มปรับเวลา (+1, -1 ฯลฯ):</strong> หากคุณกดตั้งเวลาช้าไป สามารถใช้ปุ่มเหล่านี้เพื่อปรับเวลาให้ตรงกับเวลาเกิดจริงได้</li>
+                </ul>
+            </div>
         </div>
     </main>
 
     <script src="/config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" id="supabase-cdn"></script>
-    <script src="/app.js?v=20260516_v7"></script>
+    <script src="/app.js?v=20260516_v8"></script>
 </body>
 </html>
