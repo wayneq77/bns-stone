@@ -898,8 +898,7 @@ class SoulstoneTracker {
             countdownEl.textContent = '--:--:--';
             statusEl.textContent = t('statusWaiting');
             statusEl.className = 'map-status';
-            cardEl.classList.remove('urgent', 'soon');
-            this.updateCollectedBtnState(collectedBtn, state, false);
+            this.updateCollectedBtnState(collectedBtn, false);
             return;
         }
 
@@ -945,7 +944,7 @@ class SoulstoneTracker {
                 countdownEl.className = 'timer-countdown';
             }
 
-            this.updateCollectedBtnState(collectedBtn, state, true, isCurrentCycleCollected);
+            this.updateCollectedBtnState(collectedBtn, false);
             return;
         }
 
@@ -964,29 +963,24 @@ class SoulstoneTracker {
             cardEl.classList.add('urgent');
             cardEl.classList.remove('soon');
 
-            this.updateCollectedBtnState(collectedBtn, state, true, isCurrentCycleCollected);
+            this.updateCollectedBtnState(collectedBtn, true);
             return;
         }
     }
 
-    updateCollectedBtnState(btn, state, hasTimer, isCollected = false) {
-        if (!hasTimer || !state.nextSpawn) {
-            btn.classList.remove('used', 'disabled');
-            btn.disabled = false;
-            btn.textContent = t('btnCollected');
-            return;
-        }
-
-        if (isCollected) {
-            // 已使用過（按鈕變暗，但維持文字）
-            btn.classList.add('used');
-            btn.classList.remove('disabled');
-            btn.disabled = false;
+    updateCollectedBtnState(btn, canCollect) {
+        if (!canCollect) {
+            btn.classList.add('disabled');
+            btn.classList.remove('used');
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
             btn.textContent = t('btnCollected');
         } else {
-            // 未使用過（亮綠色）
-            btn.classList.remove('used', 'disabled');
+            btn.classList.remove('disabled', 'used');
             btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
             btn.textContent = t('btnCollected');
         }
     }
