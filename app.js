@@ -18,9 +18,9 @@
 // ================================
 
 const CONFIG = {
-    // Default spawn interval: 120 min
-    DEFAULT_INTERVAL: 120 * 60 * 1000,
-    // When collected: 120 min (same as default now)
+    // Default spawn interval: 160 min (20m alive + 140m wait)
+    DEFAULT_INTERVAL: 160 * 60 * 1000,
+    // When collected: 120 min
     COLLECTED_INTERVAL: 120 * 60 * 1000,
     // Warning time: 5 minutes before spawn
     WARNING_BEFORE: 5 * 60 * 1000,
@@ -54,11 +54,6 @@ const I18N = {
     'zh': {
         'title': '靈石追蹤器',
         'subtitle': '劍靈：革命 · 及時掌握靈石動向',
-        'nextSpawn': '下次出現',
-        'remaining': '剩餘',
-        'pending': '等待設定',
-        'active': '已出現',
-        'spawning': '已出現',
         'despawning': '消失倒數',
         'statusUpcoming': '即將出現',
         'collected': '已撿完',
@@ -99,12 +94,13 @@ const I18N = {
     'en': {
         'title': 'Soulstone Tracker',
         'subtitle': 'B&S Revolution · Realtime Tracker',
-        'nextSpawn': 'Next Spawn',
-        'remaining': 'Remaining',
+        'nextSpawn': 'Est. Next Spawn',
+        'nextWave': 'Next Wave at',
+        'remaining': 'Spawns in',
         'pending': 'Pending',
-        'active': 'Spawned',
-        'spawning': 'Spawned',
-        'despawning': 'Despawning in',
+        'active': 'Currently Active',
+        'spawning': 'Currently Active',
+        'despawning': 'Despawns in',
         'statusUpcoming': 'Upcoming',
         'collected': 'Collected',
         'notCollected': 'Not Collected',
@@ -895,6 +891,7 @@ class SoulstoneTracker {
 
         // --- 無資料：等待設定 ---
         if (!state.nextSpawn) {
+            nextEl.parentElement.querySelector('.timer-label').textContent = t('nextSpawn');
             nextEl.textContent = '--:--:--';
             countdownEl.textContent = '--:--:--';
             statusEl.textContent = t('statusWaiting');
@@ -920,6 +917,7 @@ class SoulstoneTracker {
 
         // === Phase 1: 等待出現 (remaining > 0) ===
         if (remaining > 0) {
+            nextEl.parentElement.querySelector('.timer-label').textContent = t('nextSpawn');
             nextEl.textContent = this.formatTime(new Date(currentNextSpawn));
             if (timerLabel) timerLabel.textContent = t('remaining');
             countdownEl.textContent = this.formatDuration(remaining);
@@ -954,6 +952,7 @@ class SoulstoneTracker {
             const despawnRemaining = DESPAWN - spawnAge;
             const nextCycleTime = new Date(currentNextSpawn + CYCLE);
 
+            nextEl.parentElement.querySelector('.timer-label').textContent = t('nextWave');
             nextEl.textContent = this.formatTime(nextCycleTime);
             if (timerLabel) timerLabel.textContent = t('despawning');
             countdownEl.textContent = this.formatDuration(despawnRemaining);
@@ -1220,69 +1219,24 @@ class SoulstoneTracker {
     }
 
     handleSetSpawn(mapId) {
-        const modal = document.getElementById('confirm-modal');
-        const modalMessage = document.getElementById('modal-message');
-        const modalSubMsg = document.getElementById('modal-submsg');
-        const modalConfirm = document.getElementById('modal-confirm');
-        const modalCancel = document.getElementById('modal-cancel');
-
-        // 計算按下時的基準時間與下輪預計時間 (140分後)
-        const now = this.getCurrentServerTime();
-        const nextSpawnTime = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
-        const baseTimeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-        const nextTimeStr = `${nextSpawnTime.getHours().toString().padStart(2,'0')}:${nextSpawnTime.getMinutes().toString().padStart(2,'0')}`;
-
-        modalMessage.textContent = t('modalSpawnedTitle');
-        modalSubMsg.innerHTML = t('modalSpawnedSub', baseTimeStr, nextTimeStr);
-
-        // 顯示 modal
-        modal.classList.add('active');
-
-        const newConfirmBtn = modalConfirm.cloneNode(true);
-        const newCancelBtn = modalCancel.cloneNode(true);
-        modalConfirm.parentNode.replaceChild(newConfirmBtn, modalConfirm);
-        modalCancel.parentNode.replaceChild(newCancelBtn, modalCancel);
-
-        newConfirmBtn.addEventListener('click', () => {
-            modal.classList.remove('active');
-            this.setSpawnTime(mapId);
-        });
-
-        // 取消按鈕
-        newCancelBtn.addEventListener('click', () => {
-            modal.classList.remove('active');
-        });
-
-        // 點擊背景也關閉
-        const bgClose = (e) => {
-            if (e.target === modal) {
-                modal.classList.remove('active');
-                modal.removeEventListener('click', bgClose);
-            }
-        };
-        modal.addEventListener('click', bgClose);
+        // 直接執行，移除再次確認對話框
+        this.setSpawnTime(mapId);
     }
 
     handleMarkCollected(mapId) {
         const state = this.state[mapId];
 
-        // 檢查是否已使用
         if (state.collectedUsed) {
-            this.showToast('這輪已使用過「已撿完」功能');
+            // 不再跳出題視窗
             return;
         }
 
-        // 檢查是否有對時器
         if (!state.nextSpawn) {
-            this.showToast('請先按「已出現靈石」設定時間');
             return;
         }
 
-        // 執行已撿完
-        const success = this.markCollected(mapId);
-        if (success) {
-            this.showToast('已記錄撿完，下次出現時間縮短20分鐘');
-        }
+        // 直接執行已撿完，不顯示任何提示視窗
+        this.markCollected(mapId);
     }
 
     showToast(message) {
