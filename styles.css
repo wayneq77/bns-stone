@@ -360,7 +360,7 @@ body {
 
 .timer-row {
     display: flex;
-    align-items: baseline;
+    align-items: center; /* Changed from baseline to center for better alignment with 2x2 grid */
     justify-content: space-between;
     gap: 4px;
 }
@@ -380,7 +380,7 @@ body {
 }
 
 .timer-value {
-    font-size: 1.35rem; /* +50% from 0.9rem */
+    font-size: 1.15rem; /* Reduced from 1.35rem to prevent overflow */
     font-weight: 700;
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
@@ -393,21 +393,26 @@ body {
 }
 
 .adjust-btns {
-    display: flex;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(2, 36px); /* 2x2 layout as requested */
+    gap: 3px;
 }
 
 .btn-adjust {
-    background: transparent;
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
     border-radius: var(--radius-sm);
-    padding: 2px 4px;
-    font-size: 0.72rem;
-    font-weight: 600;
+    padding: 3px 0;
+    font-size: 0.85rem; /* Increased size */
+    font-weight: 700;
     font-family: var(--font-main);
     cursor: pointer;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 }
 
 .btn-adjust:hover {
