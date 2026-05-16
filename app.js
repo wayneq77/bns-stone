@@ -914,16 +914,14 @@ class SoulstoneTracker {
         const DESPAWN = CONFIG.DESPAWN_WINDOW;
         const CYCLE = CONFIG.DEFAULT_INTERVAL;
 
-        let currentNextSpawn = state.nextSpawn.getTime();
-
         // 無縫將時間推進到「與目前時間相關」的這一個循環
-        let advanced = false;
+        let currentNextSpawn = state.nextSpawn.getTime();
         while (currentNextSpawn + DESPAWN <= now.getTime()) {
             currentNextSpawn += CYCLE;
-            advanced = true;
         }
 
-        if (advanced) {
+        // 重要：如果發現時間已經跨越到新的循環，立刻重置本地狀態
+        if (currentNextSpawn !== state.nextSpawn.getTime()) {
             state.nextSpawn = new Date(currentNextSpawn);
             state.collectedUsed = false;
         }
@@ -1216,16 +1214,11 @@ class SoulstoneTracker {
     handleMarkCollected(mapId) {
         const state = this.state[mapId];
 
-        if (state.collectedUsed) {
-            // 不再跳出題視窗
-            return;
-        }
-
         if (!state.nextSpawn) {
             return;
         }
 
-        // 直接執行已撿完，不顯示任何提示視窗
+        // 直接執行已撿完，內部的 markCollected 會處理循環重置與狀態檢查
         this.markCollected(mapId);
     }
 
