@@ -746,8 +746,16 @@ class SoulstoneTracker {
         if (!currentNextSpawn) return false;
 
         // 計算目前實際位於哪個循環
+        let advanced = false;
         while (currentNextSpawn + CONFIG.DESPAWN_WINDOW <= now.getTime()) {
-            currentNextSpawn += CONFIG.DEFAULT_INTERVAL; // 140m
+            currentNextSpawn += CONFIG.DEFAULT_INTERVAL;
+            advanced = true;
+        }
+
+        // 如果已經跨越到新的循環，重置已撿完標記
+        if (advanced) {
+            mapState.collectedUsed = false;
+            mapState.nextSpawn = new Date(currentNextSpawn);
         }
         
         if (mapState.collectedUsed) {
@@ -909,8 +917,15 @@ class SoulstoneTracker {
         let currentNextSpawn = state.nextSpawn.getTime();
 
         // 無縫將時間推進到「與目前時間相關」的這一個循環
+        let advanced = false;
         while (currentNextSpawn + DESPAWN <= now.getTime()) {
             currentNextSpawn += CYCLE;
+            advanced = true;
+        }
+
+        if (advanced) {
+            state.nextSpawn = new Date(currentNextSpawn);
+            state.collectedUsed = false;
         }
 
         const remaining = currentNextSpawn - now.getTime();
