@@ -891,7 +891,7 @@ class SoulstoneTracker {
 
         // --- 無資料：等待設定 ---
         if (!state.nextSpawn) {
-            nextEl.parentElement.querySelector('.timer-label').textContent = t('nextSpawn');
+            nextEl.closest('.timer-row').querySelector('.timer-label').textContent = t('nextSpawn');
             nextEl.textContent = '--:--:--';
             countdownEl.textContent = '--:--:--';
             statusEl.textContent = t('statusWaiting');
@@ -917,7 +917,7 @@ class SoulstoneTracker {
 
         // === Phase 1: 等待出現 (remaining > 0) ===
         if (remaining > 0) {
-            nextEl.parentElement.querySelector('.timer-label').textContent = t('nextSpawn');
+            nextEl.closest('.timer-row').querySelector('.timer-label').textContent = t('nextSpawn');
             nextEl.textContent = this.formatTime(new Date(currentNextSpawn));
             if (timerLabel) timerLabel.textContent = t('remaining');
             countdownEl.textContent = this.formatDuration(remaining);
@@ -952,7 +952,7 @@ class SoulstoneTracker {
             const despawnRemaining = DESPAWN - spawnAge;
             const nextCycleTime = new Date(currentNextSpawn + CYCLE);
 
-            nextEl.parentElement.querySelector('.timer-label').textContent = t('nextWave');
+            nextEl.closest('.timer-row').querySelector('.timer-label').textContent = t('nextWave');
             nextEl.textContent = this.formatTime(nextCycleTime);
             if (timerLabel) timerLabel.textContent = t('despawning');
             countdownEl.textContent = this.formatDuration(despawnRemaining);
