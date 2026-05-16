@@ -181,6 +181,7 @@ class SoulstoneTracker {
         this.alarmState = {}; // 紀錄已經響過的 mapId
         this.serverTimeOffset = 0; // 伺服器與本地時間的毫秒差 (Supabase - Local)
         this.lastSyncTime = null;
+        this.currentTimeZone = localStorage.getItem('soulstone-timezone') || 'Asia/Taipei';
 
         // Audio Context unlocker for Autoplay policies
         this.audioCtx = null;
@@ -987,7 +988,7 @@ class SoulstoneTracker {
 
     formatTime(date) {
         return date.toLocaleTimeString('zh-TW', {
-            timeZone: 'Asia/Taipei',
+            timeZone: this.currentTimeZone,
             hour12: false,
             hour: '2-digit',
             minute: '2-digit',
@@ -1132,6 +1133,17 @@ class SoulstoneTracker {
                 currentLang = currentLang === 'zh' ? 'en' : 'zh';
                 localStorage.setItem('soulstone-lang', currentLang);
                 this.updateLanguage();
+            });
+        }
+
+        // 時區切換 select
+        const tzSelect = document.getElementById('timezone-select');
+        if (tzSelect) {
+            tzSelect.value = this.currentTimeZone;
+            tzSelect.addEventListener('change', (e) => {
+                this.currentTimeZone = e.target.value;
+                localStorage.setItem('soulstone-timezone', this.currentTimeZone);
+                this.updateAllDisplays();
             });
         }
 
