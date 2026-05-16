@@ -664,7 +664,6 @@ class SoulstoneTracker {
     async adjustTime(mapId, minutesToAdd) {
         const state = this.state[mapId];
         if (!state.nextSpawn) {
-            this.showToast('尚未設定時間，無法微調');
             return;
         }
 
@@ -674,7 +673,7 @@ class SoulstoneTracker {
             if (state.cycleEndTime) state.cycleEndTime = new Date(state.cycleEndTime.getTime() + minutesToAdd * 60 * 1000);
             this.saveToLocalStorage();
             this.updateDisplay(mapId);
-            this.showToast(t('toastAdjusted'));
+        // No toast
             return;
         }
 
@@ -695,7 +694,7 @@ class SoulstoneTracker {
             this.saveToSupabase(mapId, true);
             this.updateDisplay(mapId);
         }
-        this.showToast(t('toastAdjusted'));
+        // No toast
     }
 
     /**
@@ -750,10 +749,7 @@ class SoulstoneTracker {
             currentNextSpawn += CONFIG.DEFAULT_INTERVAL; // 140m
         }
         
-        const isCurrentCycleCollected = (currentNextSpawn === mapState.nextSpawn.getTime()) ? mapState.collectedUsed : false;
-
-        if (isCurrentCycleCollected) {
-            this.showToast('這輪已使用過「已撿完」');
+        if (mapState.collectedUsed) {
             return false;
         }
 
@@ -768,7 +764,7 @@ class SoulstoneTracker {
             mapState.cycleEndTime = mapState.nextSpawn;
             this.saveToLocalStorage();
             this.updateDisplay(mapId);
-            this.showToast(t('toastCollected'));
+        // No toast
             return true;
         }
 
@@ -795,7 +791,7 @@ class SoulstoneTracker {
                 server_now: new Date().toISOString()
             }, start);
 
-            this.showToast(t('toastCollected'));
+        // No toast
             console.log(`[DB] 已撿完更新成功(${mapId}): new_next_spawn=${data.next_spawn}`);
             return true;
         } catch (e) {
@@ -842,7 +838,7 @@ class SoulstoneTracker {
 
             const spawnDate = new Date(data.next_spawn);
             const h = spawnDate.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' });
-            this.showToast(`${t('toastReset')} ${h}`);
+        // No toast
         } catch (e) {
             console.error('[RPC] set_spawn_upcoming 失敗:', e);
             const now = this.getCurrentServerTime();
@@ -1187,41 +1183,8 @@ class SoulstoneTracker {
     // ================================
 
     handleSetIntervalSpawn(mapId) {
-        const modal = document.getElementById('confirm-modal');
-        const modalMessage = document.getElementById('modal-message');
-        const modalSubMsg = document.getElementById('modal-submsg');
-        const modalConfirm = document.getElementById('modal-confirm');
-        const modalCancel = document.getElementById('modal-cancel');
-
-        modalMessage.textContent = t('modalUpcomingTitle');
-        modalSubMsg.innerHTML = t('modalUpcomingSub');
-
-        modal.classList.add('active');
-
-        const newConfirmBtn = modalConfirm.cloneNode(true);
-        const newCancelBtn = modalCancel.cloneNode(true);
-        modalConfirm.parentNode.replaceChild(newConfirmBtn, modalConfirm);
-        modalCancel.parentNode.replaceChild(newCancelBtn, modalCancel);
-        
-        newConfirmBtn.textContent = t('modalConfirm');
-        newCancelBtn.textContent = t('modalCancel');
-
-        newConfirmBtn.addEventListener('click', () => {
-            modal.classList.remove('active');
-            this.setNextIntervalTime(mapId);
-        });
-
-        newCancelBtn.addEventListener('click', () => {
-            modal.classList.remove('active');
-        });
-
-        const bgClose = (e) => {
-            if (e.target === modal) {
-                modal.classList.remove('active');
-                modal.removeEventListener('click', bgClose);
-            }
-        };
-        modal.addEventListener('click', bgClose);
+        // 直接執行，移除再次確認對話框
+        this.setNextIntervalTime(mapId);
     }
 
     handleSetSpawn(mapId) {
@@ -1246,22 +1209,7 @@ class SoulstoneTracker {
     }
 
     showToast(message) {
-        // 建立 toast 元素
-        const toast = document.createElement('div');
-        toast.className = 'toast';
-        toast.textContent = message;
-        document.body.appendChild(toast);
-
-        // 顯示動畫
-        requestAnimationFrame(() => {
-            toast.classList.add('active');
-        });
-
-        // 3秒後移除
-        setTimeout(() => {
-            toast.classList.remove('active');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        // Disabled based on user request
     }
 
     // ================================
