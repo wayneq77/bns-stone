@@ -581,19 +581,89 @@ body {
     opacity: 0.8;
 }
 
+/* Header layout classes */
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 /* ================================
    Responsive
 ================================ */
 @media (max-width: 800px) {
     .maps-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+    }
+
+    /* Mobile Map Ordering:
+       Side-by-side ch1 & ch2 rows
+    */
+    #card-spirit-stone-valley-ch1 { order: 1; }
+    #card-spirit-stone-valley-ch2 { order: 2; }
+    #card-yu-hwang-fortress-ch1   { order: 3; }
+    #card-yu-hwang-fortress-ch2   { order: 4; }
+    #card-blood-ruffian-base-ch1  { order: 5; }
+    #card-blood-ruffian-base-ch2  { order: 6; }
+    #card-red-dragon-forge-ch1    { order: 7; }
+    #card-red-dragon-forge-ch2    { order: 8; }
+
+    /* Stack the time and adjust buttons vertically to prevent overflow */
+    .timer-value-container {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+    }
+
+    /* Stack bottom action buttons vertically so they never overflow card bounds */
+    .actions-top {
+        flex-direction: column;
+        width: 100%;
+        gap: 4px;
+    }
+
+    .actions-bottom {
+        width: 100%;
+    }
+
+    /* Full width buttons for easy mobile tapping */
+    .btn {
+        width: 100%;
+        flex: none !important;
+        font-size: 0.95rem; /* Sized down slightly for small devices */
+        padding: 8px 12px;
+    }
+
+    .btn-sm {
+        width: auto;
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .header-container {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+
+    .logo {
+        margin-bottom: 4px;
     }
 }
 
 @media (max-width: 420px) {
     .maps-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 6px;
+        gap: 4px;
     }
 
     .site-header {
