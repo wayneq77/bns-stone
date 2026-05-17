@@ -18,8 +18,8 @@
 // ================================
 
 const CONFIG = {
-    // Default spawn interval: 160 min (20m alive + 140m wait)
-    DEFAULT_INTERVAL: 160 * 60 * 1000,
+    // Default spawn interval: 140 min (20m alive + 120m wait)
+    DEFAULT_INTERVAL: 140 * 60 * 1000,
     // When collected: 120 min
     COLLECTED_INTERVAL: 120 * 60 * 1000,
     // Warning time: 10 minutes before spawn
@@ -83,7 +83,7 @@ const I18N = {
         'toastReset': '🔔 校正完成：靈石將出現在',
         // modal 1
         'modalSpawnedTitle': '確定靈石已出現了嗎？',
-        'modalSpawnedSub': (base, next) => `靈石將從現在 <strong style="color:var(--accent-orange)">${base}</strong> 開始出現（預計存在 20 分鐘）。<br>下輪出現時間設定為 <strong style="color:var(--accent-gold)">${next}</strong> (140分後)。`,
+        'modalSpawnedSub': (base, next) => `靈石將從現在 <strong style="color:var(--accent-orange)">${base}</strong> 開始出現（預計存在 20 分鐘）。<br>下輪出現時間設定為 <strong style="color:var(--accent-gold)">${next}</strong> (120分後)。`,
         // modal 2
         'modalUpcomingTitle': '確定出現即將出現靈石的圖案再點此按鈕？',
         'modalUpcomingSub': '將自動設定為 **10分鐘後** 出現，並開始倒數計時。確認執行嗎？',
@@ -129,7 +129,7 @@ const I18N = {
         'toastReset': '🔔 Calibrated! Next spawn at',
         // modal 1
         'modalSpawnedTitle': 'Confirm Soulstone spawned?',
-        'modalSpawnedSub': (base, next) => `Stones spawning starting from <strong style="color:var(--accent-orange)">${base}</strong> (lasts 20m).<br>Next spawn scheduled for <strong style="color:var(--accent-gold)">${next}</strong> (in 140m).`,
+        'modalSpawnedSub': (base, next) => `Stones spawning starting from <strong style="color:var(--accent-orange)">${base}</strong> (lasts 20m).<br>Next spawn scheduled for <strong style="color:var(--accent-gold)">${next}</strong> (in 120m).`,
         // modal 2
         'modalUpcomingTitle': 'Confirm upcoming warning?',
         'modalUpcomingSub': 'This will set the spawn time to exactly **10 minutes from now**. Confirm?',
@@ -640,7 +640,7 @@ class SoulstoneTracker {
 
     /**
      * 將時間對齊至最近的 20 分鐘標記 (:00, :20, :40) 且秒數歸零
-     * 這符合遊戲中靈石谷/要塞 140m 或 120m 的循環規律
+     * 這符合遊戲中靈石谷/要塞的循環規律
      */
     snapToGamerCycle(date) {
         if (!date) return null;

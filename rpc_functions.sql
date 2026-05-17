@@ -11,7 +11,7 @@ DECLARE
 BEGIN
     UPDATE soulstone_timers SET
         next_spawn = NOW(),
-        cycle_end_time = NOW() + INTERVAL '160 minutes',
+        cycle_end_time = NOW() + INTERVAL '140 minutes',
         collected_used = FALSE
     WHERE map_id = p_map_id;
 
@@ -134,14 +134,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 5. 自動推進：next_spawn += 160 minutes
+-- 5. 自動推進：next_spawn += 140 minutes
 CREATE OR REPLACE FUNCTION auto_advance_spawn(p_map_id TEXT)
 RETURNS json AS $$
 DECLARE
     result json;
 BEGIN
     UPDATE soulstone_timers SET
-        next_spawn = next_spawn + INTERVAL '160 minutes',
+        next_spawn = next_spawn + INTERVAL '140 minutes',
         collected_used = FALSE
     WHERE map_id = p_map_id;
 
