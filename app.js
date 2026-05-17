@@ -757,6 +757,11 @@ class SoulstoneTracker {
             mapState.collectedUsed = false;
             mapState.nextSpawn = new Date(currentNextSpawn);
         }
+
+        // 核心修正：若新一波靈石已出現，忽略並重置舊有的「已採集」標記，以順利執行本次「已撿完」動作
+        if (mapState.nextSpawn && mapState.nextSpawn.getTime() <= now.getTime()) {
+            mapState.collectedUsed = false;
+        }
         
         if (mapState.collectedUsed) {
             return false;
@@ -923,6 +928,12 @@ class SoulstoneTracker {
         // 重要：如果發現時間已經跨越到新的循環，立刻重置本地狀態
         if (currentNextSpawn !== state.nextSpawn.getTime()) {
             state.nextSpawn = new Date(currentNextSpawn);
+            state.collectedUsed = false;
+        }
+
+        // 核心修正：如果下一次出現時間 (nextSpawn) 已經到達或過去，代表這是新一波靈石，
+        // 必須將採集狀態 (collectedUsed) 視為未採集 (false)，避免舊標記阻擋「已撿完」按鈕點擊。
+        if (state.nextSpawn && state.nextSpawn.getTime() <= now.getTime()) {
             state.collectedUsed = false;
         }
 
