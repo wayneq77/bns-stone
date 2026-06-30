@@ -1182,8 +1182,17 @@ class SoulstoneTracker {
     // ================================
 
     setupEventListeners() {
-        // 警報切換 button (click = on/off, 長按/右鍵 = 切換提前時間)
+        // 警報切換 button (click = on/off)
         const alarmToggle = document.getElementById('alarm-toggle');
+        const alarmTimeBtn = document.getElementById('alarm-time');
+
+        const updateAlarmTimeBtn = () => {
+            if (alarmTimeBtn) {
+                alarmTimeBtn.textContent = `${this.alarmMinutes}m`;
+            }
+        };
+        updateAlarmTimeBtn();
+
         if (alarmToggle) {
             this.updateAlarmBtn(alarmToggle);
             alarmToggle.addEventListener('click', () => {
@@ -1195,7 +1204,7 @@ class SoulstoneTracker {
                 if (this.alarmEnabled) this.playAlarm();
             });
 
-            // 右鍵/長按：循環切換提前提醒時間 (1 → 2 → 3 → 5 → 10 → 1...)
+            // 保留右鍵切換（電腦用戶方便）
             alarmToggle.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 const opts = CONFIG.ALARM_BEFORE_OPTIONS;
@@ -1204,6 +1213,21 @@ class SoulstoneTracker {
                 this.alarmMinutes = opts[nextIdx];
                 localStorage.setItem('soulstone-alarm-minutes', this.alarmMinutes);
                 this.updateAlarmBtn(alarmToggle);
+                updateAlarmTimeBtn();
+                this.showToast(t('alarmSetting', this.alarmMinutes));
+            });
+        }
+
+        // 提醒時間按鈕 (點擊循環 1 → 3 → 5 → 1...)
+        if (alarmTimeBtn) {
+            alarmTimeBtn.addEventListener('click', () => {
+                const opts = CONFIG.ALARM_BEFORE_OPTIONS;
+                const currentIdx = opts.indexOf(this.alarmMinutes);
+                const nextIdx = (currentIdx + 1) % opts.length;
+                this.alarmMinutes = opts[nextIdx];
+                localStorage.setItem('soulstone-alarm-minutes', this.alarmMinutes);
+                updateAlarmTimeBtn();
+                if (alarmToggle) this.updateAlarmBtn(alarmToggle);
                 this.showToast(t('alarmSetting', this.alarmMinutes));
             });
         }
