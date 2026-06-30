@@ -27,7 +27,7 @@ const CONFIG = {
     // Danger time: 1 minute before spawn (UI color change)
     DANGER_BEFORE: 1 * 60 * 1000,
     // Default alarm time before spawn (user-customizable, stored in localStorage)
-    ALARM_BEFORE_OPTIONS: [1, 2, 3, 5, 10], // available options in minutes
+    ALARM_BEFORE_OPTIONS: [1, 3, 5], // available options in minutes
     get ALARM_BEFORE() {
         const saved = parseInt(localStorage.getItem('soulstone-alarm-minutes'), 10);
         return (saved && CONFIG.ALARM_BEFORE_OPTIONS.includes(saved) ? saved : 3) * 60 * 1000;
@@ -1164,10 +1164,9 @@ class SoulstoneTracker {
             };
 
             const now = ctx.currentTime;
-            // 三連急促警報：嗶-嗶-嗶~
+            // 兩聲急促警報：嗶-嗶~
             playTone(1318.51, now, 0.15, 0.5);         // E6
-            playTone(1318.51, now + 0.2, 0.15, 0.5);   // E6
-            playTone(1567.98, now + 0.4, 0.35, 0.6);   // G6 (longer, higher)
+            playTone(1567.98, now + 0.2, 0.3, 0.6);   // G6 (longer, higher)
         } catch (e) { /* fail silently */ }
     }
 
