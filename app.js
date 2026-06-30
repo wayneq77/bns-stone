@@ -1141,32 +1141,40 @@ class SoulstoneTracker {
         } catch (e) { /* fail silently */ }
     }
 
-    // 靈石出現音效：急促的三連警報聲
+    // 靈石出現音效：上升掃頻警報聲（完全不同於 Ding-Dong）
     playSpawnSound() {
         if (!this.alarmEnabled || !this.hasInteracted || !this.audioCtx) return;
 
         try {
             const ctx = this.audioCtx;
             if (ctx.state === 'suspended') return;
-            
-            const playTone = (freq, startTime, duration, volume) => {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(freq, startTime);
-                gain.gain.setValueAtTime(0, startTime);
-                gain.gain.linearRampToValueAtTime(volume, startTime + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start(startTime);
-                osc.stop(startTime + duration);
-            };
-
             const now = ctx.currentTime;
-            // 兩聲急促警報：嗶-嗶~
-            playTone(1318.51, now, 0.15, 0.5);         // E6
-            playTone(1567.98, now + 0.2, 0.3, 0.6);   // G6 (longer, higher)
+
+            // 第一聲：低→高上升掃頻 (像警報器)
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.type = 'sawtooth';
+            osc1.frequency.setValueAtTime(400, now);
+            osc1.frequency.linearRampToValueAtTime(1200, now + 0.4);
+            gain1.gain.setValueAtTime(0.3, now);
+            gain1.gain.linearRampToValueAtTime(0, now + 0.45);
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+            osc1.start(now);
+            osc1.stop(now + 0.5);
+
+            // 第二聲：再來一次更高的掃頻
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = 'sawtooth';
+            osc2.frequency.setValueAtTime(600, now + 0.5);
+            osc2.frequency.linearRampToValueAtTime(1600, now + 0.9);
+            gain2.gain.setValueAtTime(0.35, now + 0.5);
+            gain2.gain.linearRampToValueAtTime(0, now + 0.95);
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            osc2.start(now + 0.5);
+            osc2.stop(now + 1.0);
         } catch (e) { /* fail silently */ }
     }
 
