@@ -1141,7 +1141,7 @@ class SoulstoneTracker {
         } catch (e) { /* fail silently */ }
     }
 
-    // 靈石出現音效：上升掃頻警報聲（完全不同於 Ding-Dong）
+    // 靈石出現音效：木琴聲 (兩聲)
     playSpawnSound() {
         if (!this.alarmEnabled || !this.hasInteracted || !this.audioCtx) return;
 
@@ -1150,31 +1150,28 @@ class SoulstoneTracker {
             if (ctx.state === 'suspended') return;
             const now = ctx.currentTime;
 
-            // 第一聲：低→高上升掃頻 (像警報器)
-            const osc1 = ctx.createOscillator();
-            const gain1 = ctx.createGain();
-            osc1.type = 'sawtooth';
-            osc1.frequency.setValueAtTime(400, now);
-            osc1.frequency.linearRampToValueAtTime(1200, now + 0.4);
-            gain1.gain.setValueAtTime(0.3, now);
-            gain1.gain.linearRampToValueAtTime(0, now + 0.45);
-            osc1.connect(gain1);
-            gain1.connect(ctx.destination);
-            osc1.start(now);
-            osc1.stop(now + 0.5);
+            // 產生木琴般的短促敲擊聲
+            const playMarimbaTone = (freq, startTime) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                // Sine 波加上極快的衰減，模仿木琴的共鳴
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, startTime);
+                
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.8, startTime + 0.01); // 極快的 Attack
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.3); // 短促的 Decay
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(startTime);
+                osc.stop(startTime + 0.35);
+            };
 
-            // 第二聲：再來一次更高的掃頻
-            const osc2 = ctx.createOscillator();
-            const gain2 = ctx.createGain();
-            osc2.type = 'sawtooth';
-            osc2.frequency.setValueAtTime(600, now + 0.5);
-            osc2.frequency.linearRampToValueAtTime(1600, now + 0.9);
-            gain2.gain.setValueAtTime(0.35, now + 0.5);
-            gain2.gain.linearRampToValueAtTime(0, now + 0.95);
-            osc2.connect(gain2);
-            gain2.connect(ctx.destination);
-            osc2.start(now + 0.5);
-            osc2.stop(now + 1.0);
+            // 兩聲清脆的木琴敲擊 (C6 -> E6)
+            playMarimbaTone(1046.50, now);        // C6
+            playMarimbaTone(1318.51, now + 0.25); // E6
         } catch (e) { /* fail silently */ }
     }
 
