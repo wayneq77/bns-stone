@@ -22,10 +22,16 @@ const CONFIG = {
     DEFAULT_INTERVAL: 140 * 60 * 1000,
     // When collected: 120 min
     COLLECTED_INTERVAL: 120 * 60 * 1000,
-    // Warning time: 10 minutes before spawn
+    // Warning time: 10 minutes before spawn (UI color change)
     WARNING_BEFORE: 10 * 60 * 1000,
-    // Danger time: 1 minute before spawn
+    // Danger time: 1 minute before spawn (UI color change)
     DANGER_BEFORE: 1 * 60 * 1000,
+    // Default alarm time before spawn (user-customizable, stored in localStorage)
+    ALARM_BEFORE_OPTIONS: [1, 2, 3, 5, 10], // available options in minutes
+    get ALARM_BEFORE() {
+        const saved = parseInt(localStorage.getItem('soulstone-alarm-minutes'), 10);
+        return (saved && CONFIG.ALARM_BEFORE_OPTIONS.includes(saved) ? saved : 3) * 60 * 1000;
+    },
     // Supabase config (loaded from Cloudflare Pages via window.APP_CONFIG)
     SUPABASE_URL: window.APP_CONFIG?.SUPABASE_URL || '',
     SUPABASE_KEY: window.APP_CONFIG?.SUPABASE_KEY || '',
@@ -95,7 +101,8 @@ const I18N = {
         'globalStatusFormat': (active, warning) => `目前狀態：${active} 個出現中，${warning} 個即將出現`,
         'lastUpdated': '最後同步：',
         'alarmOn': '警報開啟',
-        'alarmOff': '警報已關閉'
+        'alarmOff': '警報已關閉',
+        'alarmSetting': (min) => `提前 ${min} 分鐘提醒`
     },
     'en': {
         'title': 'Soulstone Tracker',
@@ -140,7 +147,8 @@ const I18N = {
         'globalStatusFormat': (active, warning) => `Status: ${active} active, ${warning} upcoming`,
         'lastUpdated': 'Last sync: ',
         'alarmOn': 'Alarm ON',
-        'alarmOff': 'Alarm OFF'
+        'alarmOff': 'Alarm OFF',
+        'alarmSetting': (min) => `Alert ${min}m before`
     }
 };
 
@@ -178,7 +186,9 @@ class SoulstoneTracker {
         this.realtimeChannel = null;
         this.updateIntervals = {};
         this.alarmEnabled = localStorage.getItem('soulstone-alarm-enabled') === 'true';
-        this.alarmState = {}; // 紀錄已經響過的 mapId
+        this.alarmMinutes = parseInt(localStorage.getItem('soulstone-alarm-minutes'), 10) || 3;
+        this.alarmState = {}; // 紀錄「提前警報」已經響過的 mapId
+        this.spawnAlarmState = {}; // 紀錄「已出現」音效已經響過的 mapId
         this.serverTimeOffset = 0; // 伺服器與本地時間的毫秒差 (Supabase - Local)
         this.lastSyncTime = null;
         this.currentTimeZone = localStorage.getItem('soulstone-timezone') || 'Asia/Taipei';
@@ -948,12 +958,14 @@ class SoulstoneTracker {
             if (timerLabel) timerLabel.textContent = t('remaining');
             countdownEl.textContent = this.formatDuration(remaining);
 
-            // 警報
-            if (remaining <= CONFIG.WARNING_BEFORE) {
+            // 警報 (使用者自訂提前時間)
+            if (remaining <= CONFIG.ALARM_BEFORE) {
                 if (!this.alarmState[mapId]) {
                     this.alarmState[mapId] = true;
                     this.playAlarm();
                 }
+            }
+            if (remaining <= CONFIG.WARNING_BEFORE) {
                 statusEl.textContent = t('statusUpcoming');
                 statusEl.className = 'map-status danger';
                 cardEl.classList.add('soon');
@@ -963,6 +975,7 @@ class SoulstoneTracker {
                     : 'timer-countdown warning';
             } else {
                 this.alarmState[mapId] = false;
+                this.spawnAlarmState[mapId] = false; // 重置出現音效
                 statusEl.textContent = isCurrentCycleCollected ? t('collected') : t('notCollected');
                 statusEl.className = isCurrentCycleCollected ? 'map-status active' : 'map-status warning';
                 cardEl.classList.remove('urgent', 'soon');
@@ -977,6 +990,12 @@ class SoulstoneTracker {
         if (spawnAge < DESPAWN) {
             const despawnRemaining = DESPAWN - spawnAge;
             const nextCycleTime = new Date(currentNextSpawn + CYCLE);
+
+            // 靈石剛出現時觸發專屬音效（只響一次）
+            if (!this.spawnAlarmState[mapId]) {
+                this.spawnAlarmState[mapId] = true;
+                this.playSpawnSound();
+            }
 
             nextEl.closest('.timer-row').querySelector('.timer-label').textContent = t('nextWave');
             nextEl.textContent = this.formatTime(nextCycleTime);
@@ -1089,27 +1108,27 @@ class SoulstoneTracker {
         if (!btn) return;
         btn.textContent = this.alarmEnabled ? '🔔' : '🔕';
         btn.style.background = this.alarmEnabled ? 'var(--accent-orange)' : '#374151';
-        btn.title = this.alarmEnabled ? t('alarmOn') : t('alarmOff');
+        const statusText = this.alarmEnabled ? t('alarmOn') : t('alarmOff');
+        const settingText = t('alarmSetting', this.alarmMinutes);
+        btn.title = `${statusText} | ${settingText}\n(右鍵切換提醒時間)`;
     }
 
+    // 提前警報音效：柔和的 Ding-Dong
     playAlarm() {
         if (!this.alarmEnabled || !this.hasInteracted || !this.audioCtx) return;
 
         try {
             const ctx = this.audioCtx;
-            if (ctx.state === 'suspended') return; // Do not attempt to play if suspended
+            if (ctx.state === 'suspended') return;
             
-            // 產生一個清脆的雙聲提示音效 ("Ding-Dong")
             const playTone = (freq, startTime, duration) => {
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(freq, startTime);
-                
                 gain.gain.setValueAtTime(0, startTime);
-                gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05);
+                gain.gain.linearRampToValueAtTime(0.4, startTime + 0.05);
                 gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-                
                 osc.connect(gain);
                 gain.connect(ctx.destination);
                 osc.start(startTime);
@@ -1117,11 +1136,39 @@ class SoulstoneTracker {
             };
 
             const now = ctx.currentTime;
-            playTone(880, now, 0.5);       // A5
-            playTone(1108.73, now + 0.15, 0.5); // C#6
-        } catch (e) {
-            // fail silently for audio errors
-        }
+            playTone(880, now, 0.4);           // A5 - ding
+            playTone(1108.73, now + 0.2, 0.4); // C#6 - dong
+        } catch (e) { /* fail silently */ }
+    }
+
+    // 靈石出現音效：急促的三連警報聲
+    playSpawnSound() {
+        if (!this.alarmEnabled || !this.hasInteracted || !this.audioCtx) return;
+
+        try {
+            const ctx = this.audioCtx;
+            if (ctx.state === 'suspended') return;
+            
+            const playTone = (freq, startTime, duration, volume) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, startTime);
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(volume, startTime + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            };
+
+            const now = ctx.currentTime;
+            // 三連急促警報：嗶-嗶-嗶~
+            playTone(1318.51, now, 0.15, 0.5);         // E6
+            playTone(1318.51, now + 0.2, 0.15, 0.5);   // E6
+            playTone(1567.98, now + 0.4, 0.35, 0.6);   // G6 (longer, higher)
+        } catch (e) { /* fail silently */ }
     }
 
     startUpdateLoop() {
@@ -1136,7 +1183,7 @@ class SoulstoneTracker {
     // ================================
 
     setupEventListeners() {
-        // 警報切換 button
+        // 警報切換 button (click = on/off, 長按/右鍵 = 切換提前時間)
         const alarmToggle = document.getElementById('alarm-toggle');
         if (alarmToggle) {
             this.updateAlarmBtn(alarmToggle);
@@ -1147,6 +1194,18 @@ class SoulstoneTracker {
                 
                 // 開啟時立刻試播一聲讓玩家確認音量
                 if (this.alarmEnabled) this.playAlarm();
+            });
+
+            // 右鍵/長按：循環切換提前提醒時間 (1 → 2 → 3 → 5 → 10 → 1...)
+            alarmToggle.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const opts = CONFIG.ALARM_BEFORE_OPTIONS;
+                const currentIdx = opts.indexOf(this.alarmMinutes);
+                const nextIdx = (currentIdx + 1) % opts.length;
+                this.alarmMinutes = opts[nextIdx];
+                localStorage.setItem('soulstone-alarm-minutes', this.alarmMinutes);
+                this.updateAlarmBtn(alarmToggle);
+                this.showToast(t('alarmSetting', this.alarmMinutes));
             });
         }
 
