@@ -1169,9 +1169,11 @@ class SoulstoneTracker {
                 osc.stop(startTime + 0.35);
             };
 
-            // 兩聲清脆的木琴敲擊 (C6 -> E6)
-            playMarimbaTone(1046.50, now);        // C6
-            playMarimbaTone(1318.51, now + 0.25); // E6
+            // 四聲清脆的木琴敲擊
+            playMarimbaTone(1046.50, now);          // C6
+            playMarimbaTone(1174.66, now + 0.15);   // D6
+            playMarimbaTone(1318.51, now + 0.3);    // E6
+            playMarimbaTone(1567.98, now + 0.45);   // G6
         } catch (e) { /* fail silently */ }
     }
 
