@@ -963,9 +963,12 @@ class SoulstoneTracker {
             if (timerLabel) timerLabel.textContent = t('remaining');
             countdownEl.textContent = this.formatDuration(remaining);
 
-            // 警報 (精準判斷：只有在「剛好跨過」設定的提前時間時才響)
+            // 警報 (精準判斷：跨過提前時間且是剛發生的 10 秒內，避免休眠網頁醒來補發)
             if (remaining <= CONFIG.ALARM_BEFORE && prevRemaining > CONFIG.ALARM_BEFORE) {
-                this.playAlarm();
+                const alarmAge = CONFIG.ALARM_BEFORE - remaining;
+                if (alarmAge < 10000) {
+                    this.playAlarm();
+                }
             }
             
             if (remaining <= CONFIG.WARNING_BEFORE) {
@@ -992,9 +995,11 @@ class SoulstoneTracker {
             const despawnRemaining = DESPAWN - spawnAge;
             const nextCycleTime = new Date(currentNextSpawn + CYCLE);
 
-            // 靈石剛出現時觸發專屬音效（精準判斷：從大於0變成小於等於0的瞬間）
+            // 靈石剛出現時觸發專屬音效（只在發生的 5 秒內觸發，避免休眠的網頁醒來時補發舊聲音）
             if (remaining <= 0 && prevRemaining > 0) {
-                this.playSpawnSound();
+                if (spawnAge < 5000) {
+                    this.playSpawnSound();
+                }
             }
 
             nextEl.closest('.timer-row').querySelector('.timer-label').textContent = t('nextWave');
