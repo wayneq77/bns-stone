@@ -18,8 +18,8 @@
 // ================================
 
 const CONFIG = {
-    // Default spawn interval: 140 min (20m alive + 120m wait)
-    DEFAULT_INTERVAL: 140 * 60 * 1000,
+    // Default spawn interval: 120 min (20m alive + 100m wait)
+    DEFAULT_INTERVAL: 120 * 60 * 1000,
     // When collected: 120 min
     COLLECTED_INTERVAL: 120 * 60 * 1000,
     // Warning time: 10 minutes before spawn (UI color change)
