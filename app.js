@@ -189,6 +189,7 @@ class SoulstoneTracker {
         this.alarmMinutes = parseInt(localStorage.getItem('soulstone-alarm-minutes'), 10) || 3;
         this.alarmState = {}; // 紀錄「提前警報」已經響過的 mapId
         this.spawnAlarmState = {}; // 紀錄「已出現」音效已經響過的 mapId
+        this.lastRemaining = {}; // 紀錄上一次的倒數時間，用來精準判斷跨越時間點
         this.serverTimeOffset = 0; // 伺服器與本地時間的毫秒差 (Supabase - Local)
         this.lastSyncTime = null;
         this.currentTimeZone = localStorage.getItem('soulstone-timezone') || 'Asia/Taipei';
@@ -951,6 +952,10 @@ class SoulstoneTracker {
         const spawnAge = -remaining; // 正數代表已經過了出現時間多久
         const isCurrentCycleCollected = (currentNextSpawn === state.nextSpawn.getTime()) ? state.collectedUsed : false;
 
+        // 取得上一次的倒數時間，用來精準判斷「跨越時間點」的瞬間
+        const prevRemaining = this.lastRemaining[mapId];
+        this.lastRemaining[mapId] = remaining;
+
         // === Phase 1: 等待出現 (remaining > 0) ===
         if (remaining > 0) {
             nextEl.closest('.timer-row').querySelector('.timer-label').textContent = t('nextSpawn');
@@ -958,13 +963,11 @@ class SoulstoneTracker {
             if (timerLabel) timerLabel.textContent = t('remaining');
             countdownEl.textContent = this.formatDuration(remaining);
 
-            // 警報 (使用者自訂提前時間)
-            if (remaining <= CONFIG.ALARM_BEFORE) {
-                if (!this.alarmState[mapId]) {
-                    this.alarmState[mapId] = true;
-                    this.playAlarm();
-                }
+            // 警報 (精準判斷：只有在「剛好跨過」設定的提前時間時才響)
+            if (remaining <= CONFIG.ALARM_BEFORE && prevRemaining > CONFIG.ALARM_BEFORE) {
+                this.playAlarm();
             }
+            
             if (remaining <= CONFIG.WARNING_BEFORE) {
                 statusEl.textContent = t('statusUpcoming');
                 statusEl.className = 'map-status danger';
@@ -974,8 +977,6 @@ class SoulstoneTracker {
                     ? 'timer-countdown danger'
                     : 'timer-countdown warning';
             } else {
-                this.alarmState[mapId] = false;
-                this.spawnAlarmState[mapId] = false; // 重置出現音效
                 statusEl.textContent = isCurrentCycleCollected ? t('collected') : t('notCollected');
                 statusEl.className = isCurrentCycleCollected ? 'map-status active' : 'map-status warning';
                 cardEl.classList.remove('urgent', 'soon');
@@ -991,9 +992,8 @@ class SoulstoneTracker {
             const despawnRemaining = DESPAWN - spawnAge;
             const nextCycleTime = new Date(currentNextSpawn + CYCLE);
 
-            // 靈石剛出現時觸發專屬音效（只響一次）
-            if (!this.spawnAlarmState[mapId]) {
-                this.spawnAlarmState[mapId] = true;
+            // 靈石剛出現時觸發專屬音效（精準判斷：從大於0變成小於等於0的瞬間）
+            if (remaining <= 0 && prevRemaining > 0) {
                 this.playSpawnSound();
             }
 
