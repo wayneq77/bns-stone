@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>劍靈：革命 血風高原 BOSS 追蹤器</title>
+    <meta name="description" content="劍靈：革命 · 掌握血風高原五分流 BOSS 重生動向（死掉後 3 小時出現 · 10 分鐘預告）">
+    <meta property="og:title" content="劍靈：革命 · 血風高原 BOSS 追蹤器">
+    <meta property="og:description" content="掌握血風高原 Ch.1 ~ Ch.5 五分流 BOSS 重生時間（死掉後 3 小時再次出現）">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://bns-stone.pages.dev/blood">
+    <link rel="stylesheet" href="/styles.css?v=20261105_blood_v3">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body class="blood-mode">
+    <div class="bg-pattern"></div>
+    <div class="bg-glow"></div>
+
+    <header class="site-header">
+        <div class="container header-container">
+            <div>
+                <h1 class="logo">
+                    <span class="logo-icon">👹</span>
+                    <span class="logo-text" data-i18n="title">血風高原 BOSS 追蹤器</span>
+                </h1>
+                <p class="subtitle" data-i18n="subtitle">劍靈：革命 · 掌握血風高原五分流 BOSS 重生動向</p>
+            </div>
+            <div class="header-controls">
+                <select id="timezone-select" class="btn btn-sm" style="background:#374151; color:white; border:none; padding: 4px 8px; cursor:pointer; font-size: 0.8rem; border-radius: 4px;">
+                    <option value="Asia/Taipei">UTC+8 (TW)</option>
+                    <option value="Asia/Jakarta">UTC+7 (WIB)</option>
+                    <option value="Asia/Jayapura">UTC+9 (WIT)</option>
+                </select>
+                <button id="alarm-toggle" class="btn btn-sm" style="background:#374151; color:white; font-size:1.1rem; padding: 4px 8px; line-height: 1;">🔕</button>
+                <button id="alarm-time" class="btn btn-sm" style="background:#1f2937; color:#fbbf24; font-size:0.75rem; padding: 2px 6px; min-width: 32px; border: 1px solid #fbbf24;">3m</button>
+                <button id="lang-toggle" class="btn btn-sm" style="background:#4b5563; color:white;">English</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- 確認對話框 -->
+        <div id="confirm-modal" class="modal">
+            <div class="modal-content">
+                <p id="modal-message" class="modal-message"></p>
+                <p id="modal-submsg" class="modal-submsg"></p>
+                <div class="modal-actions">
+                    <button id="modal-confirm" class="btn btn-primary btn-sm">確定</button>
+                    <button id="modal-cancel" class="btn btn-ghost btn-sm">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 通知 -->
+        <div id="toast-container"></div>
+
+        <!-- 地圖卡片網格 (由 app.js 動態產生) -->
+        <div class="maps-grid blood-grid"></div>
+
+        <!-- 連線狀態 -->
+        <div class="connection-status-container">
+            <div class="connection-status" id="connection-status">
+                <span class="connection-dot offline"></span>
+                <span class="connection-text">離線 (本地模式)</span>
+            </div>
+            <div id="last-updated" class="last-updated"></div>
+        </div>
+
+        <!-- 機制說明 / Mechanism Explanation -->
+        <div class="explanation-box" style="margin-top: 2rem; padding: 1.5rem; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #d1d5db; font-size: 0.9rem; line-height: 1.6;">
+        </div>
+    </main>
+
+    <script src="/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" id="supabase-cdn"></script>
+    <script src="/app.js?v=20261105_blood_v3"></script>
+</body>
+</html>
