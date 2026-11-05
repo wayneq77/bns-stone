@@ -679,24 +679,28 @@ body {
 }
 
 /* ================================
-   Bloodwind Boss Mode (/blood) - 左右雙面板 (左：高原5分流 / 右：平原2分流)
+   Bloodwind Boss Mode (/blood) - 左右雙面板 (整體縮小 30%，一頁完整顯示五分流)
 ================================ */
+body.blood-mode .site-header {
+    padding: 6px 0 4px;
+}
+
 .maps-grid.blood-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 18px;
+    gap: 14px;
     align-items: start;
-    max-width: 1200px;
-    margin: 12px auto;
+    max-width: 1120px;
+    margin: 6px auto;
 }
 
 .blood-hero-board {
     background: var(--bg-card);
     border: 1px solid rgba(239, 68, 68, 0.35);
     border-top: 3px solid var(--accent-orange);
-    border-radius: var(--radius-lg);
-    padding: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 
 .blood-hero-board.plain-board {
@@ -707,22 +711,22 @@ body {
 .blood-hero-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding-bottom: 12px;
-    margin-bottom: 14px;
+    gap: 10px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
     border-bottom: 1px solid var(--border-color);
 }
 
 .blood-hero-icon {
-    font-size: 2.2rem;
-    width: 52px;
-    height: 52px;
+    font-size: 1.5rem;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--bg-input);
     border: 1px solid rgba(239, 68, 68, 0.35);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     flex-shrink: 0;
 }
 
@@ -731,31 +735,31 @@ body {
 }
 
 .blood-hero-title {
-    font-size: 1.35rem;
+    font-size: 1.05rem;
     font-weight: 900;
     color: var(--text-primary);
-    margin-bottom: 2px;
+    margin-bottom: 1px;
 }
 
 .blood-hero-desc {
-    font-size: 0.82rem;
+    font-size: 0.72rem;
     color: var(--text-secondary);
 }
 
 .blood-channels-container {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
 }
 
 .blood-channel-card {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 12px 14px;
+    gap: 5px;
+    padding: 7px 10px;
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
 }
 
 .blood-channel-card .card-header {
@@ -768,57 +772,83 @@ body {
 .blood-channel-card .header-left-group {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 7px;
 }
 
 .blood-channel-card .map-name {
     margin-bottom: 0;
-    font-size: 1.25rem;
+    font-size: 0.95rem;
+}
+
+.blood-channel-card .map-status {
+    font-size: 0.85rem;
 }
 
 .blood-channel-card .timer-display {
     margin-bottom: 0;
-    padding: 8px 12px;
+    padding: 4px 8px;
+}
+
+.blood-channel-card .timer-row:first-child {
+    margin-bottom: 2px;
+    padding-bottom: 2px;
+}
+
+.blood-channel-card .timer-label {
+    font-size: 0.72rem;
+}
+
+.blood-channel-card .timer-value {
+    font-size: 0.98rem;
+}
+
+.blood-channel-card .timer-countdown {
+    font-size: 1.15rem;
 }
 
 .blood-channel-card .timer-value-container {
     flex-direction: row;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .blood-channel-card .adjust-btns {
-    grid-template-columns: repeat(4, 36px);
-    gap: 4px;
+    grid-template-columns: repeat(4, 28px);
+    gap: 3px;
+}
+
+.blood-channel-card .btn-adjust {
+    font-size: 0.72rem;
+    padding: 2px 0;
 }
 
 .blood-channel-card .card-actions {
     display: grid;
     grid-template-columns: 1.35fr 1fr;
-    gap: 6px;
+    gap: 5px;
 }
 
 .blood-channel-card .actions-top {
     flex-direction: row;
-    gap: 6px;
+    gap: 5px;
 }
 
 .blood-channel-card .actions-top .btn,
 .blood-channel-card .actions-bottom .btn {
     width: auto;
     flex: 1 !important;
-    font-size: 0.95rem;
-    padding: 7px 10px;
+    font-size: 0.78rem;
+    padding: 4px 8px;
 }
 
 .blood-ch-badge {
-    font-size: 1.05rem;
+    font-size: 0.8rem;
     font-weight: 900;
     color: #fca5a5;
     background: rgba(239, 68, 68, 0.12);
     border: 1px solid rgba(239, 68, 68, 0.3);
-    width: 42px;
-    height: 42px;
+    width: 28px;
+    height: 28px;
 }
 
 .blood-ch-badge.plain-badge {
@@ -830,13 +860,13 @@ body {
 @media (max-width: 960px) {
     .maps-grid.blood-grid {
         grid-template-columns: 1fr;
-        gap: 16px;
+        gap: 12px;
     }
 }
 
 @media (max-width: 580px) {
     .blood-hero-board {
-        padding: 12px;
+        padding: 10px;
     }
 
     .blood-channel-card .card-actions {
