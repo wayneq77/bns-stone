@@ -677,3 +677,83 @@ body {
 .hidden {
     display: none !important;
 }
+
+/* ================================
+   Bloodwind Boss Mode (/blood) - 單一大畫面 + 五分流
+================================ */
+.maps-grid.blood-grid {
+    display: block;
+    margin: 12px 0;
+}
+
+.blood-hero-board {
+    background: linear-gradient(180deg, rgba(30, 14, 20, 0.95) 0%, rgba(18, 18, 26, 0.98) 100%);
+    border: 2px solid rgba(239, 68, 68, 0.45);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    box-shadow: 0 0 32px rgba(239, 68, 68, 0.15);
+}
+
+.blood-hero-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 14px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.blood-hero-icon {
+    font-size: 2.8rem;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+}
+
+.blood-hero-title {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #fca5a5;
+    margin-bottom: 4px;
+}
+
+.blood-hero-desc {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.blood-channels-container {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+}
+
+.blood-ch-badge {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+@media (max-width: 1100px) {
+    .blood-channels-container {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .blood-hero-board {
+        padding: 12px;
+    }
+    .blood-channels-container {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}

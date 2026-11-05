@@ -17,11 +17,29 @@
 // Configuration
 // ================================
 
+// Determine Server / Mode from Path (allow asia1, ct1, and blood)
+const ALLOWED_SERVERS = ['asia1', 'ct1', 'blood'];
+
+function getServerFromPath() {
+    const path = window.location.pathname.replace(/\/+$/, '').substring(1).toLowerCase();
+    
+    // 沒有輸入後綴，或不在允許清單內 → 404
+    if (!path || !ALLOWED_SERVERS.includes(path)) {
+        document.body.innerHTML = '<div style="display:flex; height:100vh; align-items:center; justify-content:center; flex-direction:column; color:white;"><h1 style="font-size:3rem; margin:0;">404</h1><p>Server Not Found / 找不到伺服器</p></div>';
+        throw new Error('Invalid server');
+    }
+    
+    return path;
+}
+const currentServer = getServerFromPath();
+const isBloodMode = currentServer === 'blood';
+const currentServerLabel = currentServer === 'ct1' ? 'CT 1' : (isBloodMode ? '血風高原' : 'Asia 1');
+
 const CONFIG = {
-    // Default spawn interval: 140 min (20m alive + 120m wait)
-    DEFAULT_INTERVAL: 140 * 60 * 1000,
-    // When collected: 120 min
-    COLLECTED_INTERVAL: 120 * 60 * 1000,
+    // Default spawn interval: Soulstone = 140m (20m alive + 120m wait), Blood Boss = 200m (20m alive + 180m wait)
+    DEFAULT_INTERVAL: (isBloodMode ? 200 : 140) * 60 * 1000,
+    // When collected / boss killed: Soulstone = 120 min, Blood Boss = 180 min (3 hours)
+    COLLECTED_INTERVAL: (isBloodMode ? 180 : 120) * 60 * 1000,
     // Warning time: 10 minutes before spawn (UI color change)
     WARNING_BEFORE: 10 * 60 * 1000,
     // Danger time: 1 minute before spawn (UI color change)
@@ -37,8 +55,14 @@ const CONFIG = {
     SUPABASE_KEY: window.APP_CONFIG?.SUPABASE_KEY || '',
     // Despawn window: 20 minutes after spawn
     DESPAWN_WINDOW: 20 * 60 * 1000,
-    // Map definitions (4 maps × 2 channels = 8 entries)
-    MAPS: [
+    // Map definitions
+    MAPS: isBloodMode ? [
+        { id: 'bloodwind-ch1', name: '血風高原', channel: 1, icon: '👹' },
+        { id: 'bloodwind-ch2', name: '血風高原', channel: 2, icon: '👹' },
+        { id: 'bloodwind-ch3', name: '血風高原', channel: 3, icon: '👹' },
+        { id: 'bloodwind-ch4', name: '血風高原', channel: 4, icon: '👹' },
+        { id: 'bloodwind-ch5', name: '血風高原', channel: 5, icon: '👹' }
+    ] : [
         // Top row: Ch.1
         { id: 'spirit-stone-valley-ch1', name: '靈石谷', channel: 1, icon: '🏔️' },
         { id: 'yu-hwang-fortress-ch1',   name: '玉皇要塞', channel: 1, icon: '🏯' },
@@ -58,21 +82,23 @@ const CONFIG = {
 
 const I18N = {
     'zh': {
-        'title': '靈石追蹤器',
-        'subtitle': '劍靈：革命 · 及時掌握靈石動向',
+        'title': isBloodMode ? '血風高原 BOSS 追蹤器' : '靈石追蹤器',
+        'subtitle': isBloodMode ? '劍靈：革命 · 掌握血風高原五分流 BOSS 重生動向' : '劍靈：革命 · 及時掌握靈石動向',
         'nextSpawn': '預計出現時間',
         'nextWave': '下波預計時間',
         'remaining': '距離出現還有',
         'pending': '等待出現中',
-        'active': '靈石出現中',
-        'spawning': '靈石出現中',
-        'despawning': '本波消失倒數',
+        'active': isBloodMode ? 'BOSS 出現中' : '靈石出現中',
+        'spawning': isBloodMode ? 'BOSS 出現中' : '靈石出現中',
+        'despawning': isBloodMode ? '出現狀態倒數' : '本波消失倒數',
         'statusUpcoming': '即將出現',
-        'collected': '手動撿完靈石',
-        'notCollected': '靈石自動消失',
-        'btnSpawned': '已出現靈石',
-        'btnUpcoming': '即將出現靈石',
-        'btnCollected': '已撿完',
+        'collected': isBloodMode ? 'BOSS 已死掉 (3小時倒數)' : '手動撿完靈石',
+        'notCollected': isBloodMode ? '等待 BOSS 出現' : '靈石自動消失',
+        'btnSpawned': isBloodMode ? 'BOSS 已出現' : '已出現靈石',
+        'btnUpcoming': isBloodMode ? '即將出現 (10分)' : '即將出現靈石',
+        'btnCollected': isBloodMode ? '已死掉 (重置3小時)' : '已撿完',
+        'bloodBannerTitle': '血風高原 BOSS 監控面板',
+        'bloodBannerDesc': '死亡後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘 · 共 5 個分流獨立計時',
         // maps
         'spirit-stone-valley-ch1': '靈石谷 Ch.1',
         'spirit-stone-valley-ch2': '靈石谷 Ch.2',
@@ -82,44 +108,51 @@ const I18N = {
         'blood-ruffian-base-ch2': '糾土地帶 Ch.2',
         'red-dragon-forge-ch1': '赤龍火山 Ch.1',
         'red-dragon-forge-ch2': '赤龍火山 Ch.2',
+        'bloodwind-ch1': '血風高原 Ch.1',
+        'bloodwind-ch2': '血風高原 Ch.2',
+        'bloodwind-ch3': '血風高原 Ch.3',
+        'bloodwind-ch4': '血風高原 Ch.4',
+        'bloodwind-ch5': '血風高原 Ch.5',
         // toasts & modals
         'toastShorten': '✅ 採集完成！已縮短 20 分鐘',
-        'toastCollected': '✅ 採集完成！下輪出現時間：120 分鐘後',
+        'toastCollected': isBloodMode ? '✅ 已紀錄擊殺！下輪出現時間：180 分鐘（3小時）後' : '✅ 採集完成！下輪出現時間：120 分鐘後',
         'toastAdjusted': '✅ 時間已微調',
-        'toastReset': '🔔 校正完成：靈石將出現在',
+        'toastReset': '🔔 校正完成：將出現在',
         // modal 1
-        'modalSpawnedTitle': '確定靈石已出現了嗎？',
-        'modalSpawnedSub': (base, next) => `靈石將從現在 <strong style="color:var(--accent-orange)">${base}</strong> 開始出現（預計存在 20 分鐘）。<br>下輪出現時間設定為 <strong style="color:var(--accent-gold)">${next}</strong> (120分後)。`,
+        'modalSpawnedTitle': isBloodMode ? '確定 BOSS 已出現了嗎？' : '確定靈石已出現了嗎？',
+        'modalSpawnedSub': (base, next) => `將從現在 <strong style="color:var(--accent-orange)">${base}</strong> 開始出現。<br>下輪出現時間設定為 <strong style="color:var(--accent-gold)">${next}</strong>。`,
         // modal 2
-        'modalUpcomingTitle': '確定出現即將出現靈石的圖案再點此按鈕？',
+        'modalUpcomingTitle': '確定出現即將出現的預告再點此按鈕？',
         'modalUpcomingSub': '將自動設定為 **10分鐘後** 出現，並開始倒數計時。確認執行嗎？',
         // toggle
         'langToggle': 'English',
         'modalConfirm': '確定',
         'modalCancel': '取消',
         'statusWaiting': '等待設定',
-        'globalStatusFormat': (active, warning) => `目前狀態：${active} 個出現中，${warning} 個即將出現`,
+        'globalStatusFormat': (active, warning) => `目前狀態：${active} 個已設定，${warning} 個即將出現`,
         'lastUpdated': '最後同步：',
         'alarmOn': '警報開啟',
         'alarmOff': '警報已關閉',
         'alarmSetting': (min) => `提前 ${min} 分鐘提醒`
     },
     'en': {
-        'title': 'Soulstone Tracker',
-        'subtitle': 'B&S Revolution · Realtime Tracker',
+        'title': isBloodMode ? 'Bloodwind Boss Tracker' : 'Soulstone Tracker',
+        'subtitle': isBloodMode ? 'B&S Revolution · Bloodwind Highland 5-Ch Boss Timer' : 'B&S Revolution · Realtime Tracker',
         'nextSpawn': 'Next Spawn',
         'nextWave': 'Next Wave',
         'remaining': 'Spawns In',
         'pending': 'Pending',
-        'active': 'Active',
-        'spawning': 'Active',
+        'active': isBloodMode ? 'BOSS Active' : 'Active',
+        'spawning': isBloodMode ? 'BOSS Active' : 'Active',
         'despawning': 'Despawns In',
         'statusUpcoming': 'Upcoming',
-        'collected': 'Manually Collected',
-        'notCollected': 'Auto Despawned',
-        'btnSpawned': 'Spawned',
-        'btnUpcoming': 'Upcoming',
-        'btnCollected': 'Collected',
+        'collected': isBloodMode ? 'Boss Killed (3h Timer)' : 'Manually Collected',
+        'notCollected': isBloodMode ? 'Waiting for Boss' : 'Auto Despawned',
+        'btnSpawned': isBloodMode ? 'Boss Spawned' : 'Spawned',
+        'btnUpcoming': isBloodMode ? 'Upcoming (10m)' : 'Upcoming',
+        'btnCollected': isBloodMode ? 'Boss Killed (3h)' : 'Collected',
+        'bloodBannerTitle': 'Bloodwind Highland BOSS Dashboard',
+        'bloodBannerDesc': 'Respawns 3 hours (180m) after death · 10m upcoming warning · 5 independent channels',
         // maps
         'spirit-stone-valley-ch1': 'Spirit Stone Valley Ch.1',
         'spirit-stone-valley-ch2': 'Spirit Stone Valley Ch.2',
@@ -129,14 +162,19 @@ const I18N = {
         'blood-ruffian-base-ch2': 'Blood Ruffian Base Ch.2',
         'red-dragon-forge-ch1': 'Red Dragon Forge Ch.1',
         'red-dragon-forge-ch2': 'Red Dragon Forge Ch.2',
+        'bloodwind-ch1': 'Bloodwind Highland Ch.1',
+        'bloodwind-ch2': 'Bloodwind Highland Ch.2',
+        'bloodwind-ch3': 'Bloodwind Highland Ch.3',
+        'bloodwind-ch4': 'Bloodwind Highland Ch.4',
+        'bloodwind-ch5': 'Bloodwind Highland Ch.5',
         // toasts & modals
         'toastShorten': '✅ Collected! Timer shortened by 20m',
-        'toastCollected': '✅ Collected! Next spawn in 120m',
+        'toastCollected': isBloodMode ? '✅ Boss Killed! Next spawn in 180m (3h)' : '✅ Collected! Next spawn in 120m',
         'toastAdjusted': '✅ Time adjusted',
         'toastReset': '🔔 Calibrated! Next spawn at',
         // modal 1
-        'modalSpawnedTitle': 'Confirm Soulstone spawned?',
-        'modalSpawnedSub': (base, next) => `Stones spawning starting from <strong style="color:var(--accent-orange)">${base}</strong> (lasts 20m).<br>Next spawn scheduled for <strong style="color:var(--accent-gold)">${next}</strong> (in 120m).`,
+        'modalSpawnedTitle': isBloodMode ? 'Confirm Boss spawned?' : 'Confirm Soulstone spawned?',
+        'modalSpawnedSub': (base, next) => `Spawning starting from <strong style="color:var(--accent-orange)">${base}</strong>.<br>Next spawn scheduled for <strong style="color:var(--accent-gold)">${next}</strong>.`,
         // modal 2
         'modalUpcomingTitle': 'Confirm upcoming warning?',
         'modalUpcomingSub': 'This will set the spawn time to exactly **10 minutes from now**. Confirm?',
@@ -153,23 +191,6 @@ const I18N = {
 };
 
 let currentLang = localStorage.getItem('soulstone-lang') || 'zh';
-
-// Determine Server from Path (allow asia1 and ct1)
-const ALLOWED_SERVERS = ['asia1', 'ct1'];
-
-function getServerFromPath() {
-    const path = window.location.pathname.replace(/\/+$/, '').substring(1).toLowerCase();
-    
-    // 沒有輸入後綴，或不在允許清單內 → 404
-    if (!path || !ALLOWED_SERVERS.includes(path)) {
-        document.body.innerHTML = '<div style="display:flex; height:100vh; align-items:center; justify-content:center; flex-direction:column; color:white;"><h1 style="font-size:3rem; margin:0;">404</h1><p>Server Not Found / 找不到伺服器</p></div>';
-        throw new Error('Invalid server');
-    }
-    
-    return path;
-}
-const currentServer = getServerFromPath();
-const currentServerLabel = currentServer === 'ct1' ? 'CT 1' : 'Asia 1';
 
 function t(key, ...args) {
     const text = I18N[currentLang][key];
@@ -257,6 +278,99 @@ class SoulstoneTracker {
         const grid = document.querySelector('.maps-grid');
         if (!grid) return;
         grid.innerHTML = '';
+
+        if (isBloodMode) {
+            document.body.classList.add('blood-mode');
+            grid.classList.add('blood-grid');
+
+            const logoIcon = document.querySelector('.logo-icon');
+            if (logoIcon) logoIcon.textContent = '👹';
+
+            const board = document.createElement('div');
+            board.className = 'blood-hero-board';
+            board.innerHTML = `
+                <div class="blood-hero-header">
+                    <div class="blood-hero-icon">👹</div>
+                    <div class="blood-hero-text">
+                        <h2 class="blood-hero-title" data-i18n="bloodBannerTitle">血風高原 BOSS 監控面板</h2>
+                        <p class="blood-hero-desc" data-i18n="bloodBannerDesc">死亡後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘 · 共 5 個分流獨立計時</p>
+                    </div>
+                </div>
+                <div class="blood-channels-container"></div>
+            `;
+            grid.appendChild(board);
+
+            const channelsContainer = board.querySelector('.blood-channels-container');
+            CONFIG.MAPS.forEach(map => {
+                const chLabel = map.channel ? ` Ch.${map.channel}` : '';
+                const card = document.createElement('div');
+                card.className = 'map-card blood-channel-card';
+                card.id = `card-${map.id}`;
+                card.dataset.map = map.id;
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div class="map-icon blood-ch-badge">Ch.${map.channel}</div>
+                        <div class="map-info">
+                            <h2 class="map-name" data-i18n="${map.id}">${map.name}${chLabel}</h2>
+                            <span class="map-status" id="status-${map.id}" data-i18n="statusWaiting">等待設定</span>
+                        </div>
+                    </div>
+                    <div class="timer-display" id="timer-${map.id}">
+                        <div class="timer-row">
+                            <span class="timer-label" data-i18n="nextSpawn">下次出現</span>
+                            <div class="timer-value-container">
+                                <span class="timer-value" id="next-${map.id}">--:--:--</span>
+                                <div class="adjust-btns">
+                                    <button class="btn-adjust" data-action="adjust" data-amount="-10" data-map="${map.id}">-10</button>
+                                    <button class="btn-adjust" data-action="adjust" data-amount="10" data-map="${map.id}">+10</button>
+                                    <button class="btn-adjust" data-action="adjust" data-amount="-1" data-map="${map.id}">-1</button>
+                                    <button class="btn-adjust" data-action="adjust" data-amount="1" data-map="${map.id}">+1</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="timer-row">
+                            <span class="timer-label" id="timer-label-${map.id}" data-i18n="remaining">剩餘</span>
+                            <span class="timer-countdown" id="countdown-${map.id}">--:--:--</span>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <div class="actions-top">
+                            <button class="btn btn-primary set-btn" data-action="set" data-map="${map.id}" data-i18n="btnSpawned">BOSS 已出現</button>
+                            <button class="btn btn-info interval-btn" data-action="interval" data-map="${map.id}" data-i18n="btnUpcoming">即將出現 (10分)</button>
+                        </div>
+                        <div class="actions-bottom">
+                            <button class="btn btn-success collected-btn" data-action="collected" data-map="${map.id}" data-i18n="btnCollected">已死掉 (重置3小時)</button>
+                        </div>
+                    </div>
+                `;
+                channelsContainer.appendChild(card);
+            });
+
+            // 更新機制說明區塊為血風高原 BOSS 專屬說明
+            const expBox = document.querySelector('.explanation-box');
+            if (expBox) {
+                expBox.innerHTML = `
+                    <h3 style="color: var(--accent-gold); margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">機制說明 / Mechanism Explanation (血風高原 BOSS)</h3>
+                    <div style="margin-bottom: 1.2rem;">
+                        <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇹🇼 [TW] 繁體中文</div>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            <li><strong>手動點擊「已死掉 (重置3小時)」：</strong>血風高原 BOSS 被擊殺後，點擊此按鈕會將該分流的下次出現時間設定為 <strong>當下時間的 180 分鐘（3小時）後</strong>。</li>
+                            <li><strong>點擊「即將出現 (10分)」：</strong>當遊戲中跳出 BOSS 即將出現預告時點擊，系統會自動設定為 <strong>10 分鐘後</strong> 出現。</li>
+                            <li><strong>時間微調 (+10, -10, +1, -1)：</strong>若晚了幾分鐘才按按鈕，可使用微調按鈕往前或往後修正，讓五個分流的倒數完美貼近真實時間。</li>
+                        </ul>
+                    </div>
+                    <div style="margin-bottom: 0;">
+                        <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇬🇧 [EN] English</div>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            <li><strong>"Boss Killed (3h)" Button:</strong> When the Bloodwind Highland Boss dies, click this button to set the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now.</li>
+                            <li><strong>"Upcoming (10m)" Button:</strong> Click when the 10-minute warning icon appears in-game to set the countdown to <strong>10 minutes</strong>.</li>
+                            <li><strong>Adjust Buttons (+10, -10, +1, -1):</strong> Use these to fine-tune each channel's spawn timer if recorded slightly late.</li>
+                        </ul>
+                    </div>
+                `;
+            }
+            return;
+        }
 
         CONFIG.MAPS.forEach(map => {
             const chLabel = map.channel ? ` Ch.${map.channel}` : '';
@@ -746,7 +860,7 @@ class SoulstoneTracker {
     }
 
     /**
-     * 已撿完：呼叫伺服器端 RPC，用資料庫的 NOW() 判斷 remaining
+     * 已撿完 / BOSS 已死掉
      */
     async markCollected(mapId) {
         const mapState = this.state[mapId];
@@ -754,33 +868,34 @@ class SoulstoneTracker {
         const now = this.getCurrentServerTime();
         let currentNextSpawn = mapState.nextSpawn ? mapState.nextSpawn.getTime() : 0;
         
-        if (!currentNextSpawn) return false;
+        if (!isBloodMode) {
+            if (!currentNextSpawn) return false;
 
-        // 計算目前實際位於哪個循環
-        let advanced = false;
-        while (currentNextSpawn + CONFIG.DESPAWN_WINDOW <= now.getTime()) {
-            currentNextSpawn += CONFIG.DEFAULT_INTERVAL;
-            advanced = true;
+            // 計算目前實際位於哪個循環
+            let advanced = false;
+            while (currentNextSpawn + CONFIG.DESPAWN_WINDOW <= now.getTime()) {
+                currentNextSpawn += CONFIG.DEFAULT_INTERVAL;
+                advanced = true;
+            }
+
+            // 如果已經跨越到新的循環，重置已撿完標記
+            if (advanced) {
+                mapState.collectedUsed = false;
+                mapState.nextSpawn = new Date(currentNextSpawn);
+            }
+
+            // 核心修正：若新一波靈石已出現，忽略並重置舊有的「已採集」標記，以順利執行本次「已撿完」動作
+            if (mapState.nextSpawn && mapState.nextSpawn.getTime() <= now.getTime()) {
+                mapState.collectedUsed = false;
+            }
+            
+            if (mapState.collectedUsed) {
+                return false;
+            }
         }
 
-        // 如果已經跨越到新的循環，重置已撿完標記
-        if (advanced) {
-            mapState.collectedUsed = false;
-            mapState.nextSpawn = new Date(currentNextSpawn);
-        }
-
-        // 核心修正：若新一波靈石已出現，忽略並重置舊有的「已採集」標記，以順利執行本次「已撿完」動作
-        if (mapState.nextSpawn && mapState.nextSpawn.getTime() <= now.getTime()) {
-            mapState.collectedUsed = false;
-        }
-        
-        if (mapState.collectedUsed) {
-            return false;
-        }
-
-        // 依照使用者指示：「最後一顆石頭被手動撿完，此時你在網頁按下已撿完，下次出現是當前時間 + 120分鐘」
-        // 不再拘泥於原本的循環，直接以「按下按鈕的瞬間 (ToD)」起算 120 分鐘作為下次出現時間
-        let newTargetTime = now.getTime() + 120 * 60 * 1000;
+        // 靈石：當前時間 + 120分鐘；血風高原 BOSS：死掉後 3 小時（當前時間 + 180分鐘）
+        let newTargetTime = now.getTime() + CONFIG.COLLECTED_INTERVAL;
 
         if (!this.supabase) {
             // Fallback: 本地計算
@@ -789,22 +904,21 @@ class SoulstoneTracker {
             mapState.cycleEndTime = mapState.nextSpawn;
             this.saveToLocalStorage();
             this.updateDisplay(mapId);
-        // No toast
             return true;
         }
 
         const serverMapId = `${currentServer}_${mapId}`;
         const start = Date.now();
         try {
-            // 使用直接 table update 來迴避有 bug 的 RPC func
+            // 使用 upsert 確保新分流 (如 blood_bloodwind-ch1~ch5) 尚未存在於資料表時也能自動新增並更新
             const { data, error } = await this.supabase
                 .from('soulstone_timers')
-                .update({ 
+                .upsert({ 
+                    map_id: serverMapId,
                     next_spawn: new Date(newTargetTime).toISOString(), 
                     collected_used: true, 
                     updated_at: new Date().toISOString()
-                })
-                .eq('map_id', serverMapId)
+                }, { onConflict: 'map_id' })
                 .select()
                 .single();
 
@@ -816,11 +930,16 @@ class SoulstoneTracker {
                 server_now: new Date().toISOString()
             }, start);
 
-        // No toast
-            console.log(`[DB] 已撿完更新成功(${mapId}): new_next_spawn=${data.next_spawn}`);
+            console.log(`[DB] 已撿完/擊殺更新成功(${mapId}): new_next_spawn=${data.next_spawn}`);
             return true;
         } catch (e) {
-            console.error('[RPC] mark_collected_fn 失敗:', e);
+            console.error('[RPC] markCollected 失敗:', e);
+            // Fallback: 本地與 saveToSupabase
+            mapState.collectedUsed = true;
+            mapState.nextSpawn = new Date(newTargetTime);
+            mapState.cycleEndTime = mapState.nextSpawn;
+            this.saveToSupabase(mapId, true);
+            this.updateDisplay(mapId);
             return false;
         }
     }
@@ -923,7 +1042,7 @@ class SoulstoneTracker {
             countdownEl.textContent = '--:--:--';
             statusEl.textContent = t('statusWaiting');
             statusEl.className = 'map-status';
-            this.updateCollectedBtnState(collectedBtn, false);
+            this.updateCollectedBtnState(collectedBtn, isBloodMode);
             return;
         }
 
@@ -983,7 +1102,7 @@ class SoulstoneTracker {
                 countdownEl.className = 'timer-countdown';
             }
 
-            this.updateCollectedBtnState(collectedBtn, false);
+            this.updateCollectedBtnState(collectedBtn, isBloodMode);
             return;
         }
 
@@ -1092,10 +1211,10 @@ class SoulstoneTracker {
         if (toggleBtn) toggleBtn.textContent = t('langToggle');
 
         // Update Title with Server Info
-        document.title = `${currentServerLabel} | ${t('title')}`;
+        document.title = isBloodMode ? t('title') : `${currentServerLabel} | ${t('title')}`;
         const logoText = document.querySelector('.logo-text');
         if (logoText) {
-            logoText.textContent = `${t('title')} (${currentServerLabel})`;
+            logoText.textContent = isBloodMode ? t('title') : `${t('title')} (${currentServerLabel})`;
         }
 
         this.updateAllDisplays();
@@ -1314,11 +1433,11 @@ class SoulstoneTracker {
     handleMarkCollected(mapId) {
         const state = this.state[mapId];
 
-        if (!state.nextSpawn) {
+        if (!state.nextSpawn && !isBloodMode) {
             return;
         }
 
-        // 直接執行已撿完，內部的 markCollected 會處理循環重置與狀態檢查
+        // 直接執行已撿完 / BOSS 已死掉，內部的 markCollected 會處理循環重置與狀態檢查
         this.markCollected(mapId);
     }
 
