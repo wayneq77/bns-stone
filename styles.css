@@ -797,6 +797,11 @@ body {
     .blood-channel-card .actions-top {
         flex-direction: row;
     }
+
+    .blood-channel-card .actions-top .btn {
+        width: auto;
+        flex: 1 !important;
+    }
 }
 
 @media (max-width: 480px) {
