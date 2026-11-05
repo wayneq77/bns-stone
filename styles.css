@@ -679,36 +679,44 @@ body {
 }
 
 /* ================================
-   Bloodwind Boss Mode (/blood) - 單一大畫面 + 五分流
+   Bloodwind Boss Mode (/blood) - 左右雙面板 (左：高原5分流 / 右：平原2分流)
 ================================ */
 .maps-grid.blood-grid {
-    display: block;
-    max-width: 1060px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    align-items: start;
+    max-width: 1200px;
     margin: 12px auto;
 }
 
 .blood-hero-board {
     background: var(--bg-card);
-    border: 1px solid rgba(239, 68, 68, 0.4);
+    border: 1px solid rgba(239, 68, 68, 0.35);
     border-top: 3px solid var(--accent-orange);
     border-radius: var(--radius-lg);
-    padding: 20px;
+    padding: 16px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.blood-hero-board.plain-board {
+    border-color: rgba(139, 92, 246, 0.4);
+    border-top: 3px solid #8b5cf6;
 }
 
 .blood-hero-header {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding-bottom: 16px;
-    margin-bottom: 16px;
+    gap: 12px;
+    padding-bottom: 12px;
+    margin-bottom: 14px;
     border-bottom: 1px solid var(--border-color);
 }
 
 .blood-hero-icon {
-    font-size: 2.5rem;
-    width: 60px;
-    height: 60px;
+    font-size: 2.2rem;
+    width: 52px;
+    height: 52px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -718,105 +726,126 @@ body {
     flex-shrink: 0;
 }
 
+.blood-hero-icon.plain-icon {
+    border-color: rgba(139, 92, 246, 0.45);
+}
+
 .blood-hero-title {
-    font-size: 1.45rem;
+    font-size: 1.35rem;
     font-weight: 900;
     color: var(--text-primary);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .blood-hero-desc {
-    font-size: 0.88rem;
+    font-size: 0.82rem;
     color: var(--text-secondary);
 }
 
 .blood-channels-container {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .blood-channel-card {
-    display: grid;
-    grid-template-columns: 200px 1fr 300px;
-    align-items: center;
-    gap: 16px;
-    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
 }
 
 .blood-channel-card .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-bottom: 0;
+}
+
+.blood-channel-card .header-left-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.blood-channel-card .map-name {
+    margin-bottom: 0;
+    font-size: 1.25rem;
 }
 
 .blood-channel-card .timer-display {
     margin-bottom: 0;
-    padding: 8px 14px;
+    padding: 8px 12px;
+}
+
+.blood-channel-card .timer-value-container {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
 }
 
 .blood-channel-card .adjust-btns {
-    grid-template-columns: repeat(4, 38px);
+    grid-template-columns: repeat(4, 36px);
     gap: 4px;
 }
 
 .blood-channel-card .card-actions {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
     gap: 6px;
 }
 
+.blood-channel-card .actions-top {
+    flex-direction: row;
+    gap: 6px;
+}
+
+.blood-channel-card .actions-top .btn,
+.blood-channel-card .actions-bottom .btn {
+    width: auto;
+    flex: 1 !important;
+    font-size: 0.95rem;
+    padding: 7px 10px;
+}
+
 .blood-ch-badge {
-    font-size: 1.2rem;
+    font-size: 1.05rem;
     font-weight: 900;
     color: #fca5a5;
     background: rgba(239, 68, 68, 0.12);
     border: 1px solid rgba(239, 68, 68, 0.3);
-    width: 52px;
-    height: 52px;
+    width: 42px;
+    height: 42px;
 }
 
-@media (max-width: 900px) {
-    .blood-hero-board {
-        padding: 14px;
-    }
+.blood-ch-badge.plain-badge {
+    color: #c4b5fd;
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.35);
+}
 
-    .blood-channel-card {
+@media (max-width: 960px) {
+    .maps-grid.blood-grid {
         grid-template-columns: 1fr;
-        gap: 10px;
+        gap: 16px;
+    }
+}
+
+@media (max-width: 580px) {
+    .blood-hero-board {
         padding: 12px;
     }
 
-    .blood-channel-card .timer-value-container {
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .blood-channel-card .actions-top {
-        flex-direction: row;
-    }
-
-    .blood-channel-card .actions-top .btn {
-        width: auto;
-        flex: 1 !important;
-    }
-}
-
-@media (max-width: 480px) {
-    .blood-hero-header {
-        flex-direction: column;
-        text-align: center;
-        gap: 8px;
+    .blood-channel-card .card-actions {
+        grid-template-columns: 1fr;
     }
 
     .blood-channel-card .timer-value-container {
         flex-direction: column;
         align-items: flex-end;
-    }
-
-    .blood-channel-card .actions-top {
-        flex-direction: column;
+        gap: 4px;
     }
 }

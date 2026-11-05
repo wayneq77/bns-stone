@@ -57,11 +57,15 @@ const CONFIG = {
     DESPAWN_WINDOW: 20 * 60 * 1000,
     // Map definitions
     MAPS: isBloodMode ? [
-        { id: 'bloodwind-ch1', name: '血風高原', channel: 1, icon: '👹' },
-        { id: 'bloodwind-ch2', name: '血風高原', channel: 2, icon: '👹' },
-        { id: 'bloodwind-ch3', name: '血風高原', channel: 3, icon: '👹' },
-        { id: 'bloodwind-ch4', name: '血風高原', channel: 4, icon: '👹' },
-        { id: 'bloodwind-ch5', name: '血風高原', channel: 5, icon: '👹' }
+        // 左側：血風高原 (5分流)
+        { id: 'bloodwind-ch1', name: '血風高原', region: 'highland', channel: 1, icon: '👹' },
+        { id: 'bloodwind-ch2', name: '血風高原', region: 'highland', channel: 2, icon: '👹' },
+        { id: 'bloodwind-ch3', name: '血風高原', region: 'highland', channel: 3, icon: '👹' },
+        { id: 'bloodwind-ch4', name: '血風高原', region: 'highland', channel: 4, icon: '👹' },
+        { id: 'bloodwind-ch5', name: '血風高原', region: 'highland', channel: 5, icon: '👹' },
+        // 右側：血風平原 (2分流)
+        { id: 'bloodplain-ch1', name: '血風平原', region: 'plain', channel: 1, icon: '⚔️' },
+        { id: 'bloodplain-ch2', name: '血風平原', region: 'plain', channel: 2, icon: '⚔️' }
     ] : [
         // Top row: Ch.1
         { id: 'spirit-stone-valley-ch1', name: '靈石谷', channel: 1, icon: '🏔️' },
@@ -82,8 +86,8 @@ const CONFIG = {
 
 const I18N = {
     'zh': {
-        'title': isBloodMode ? '血風高原 BOSS 追蹤器' : '靈石追蹤器',
-        'subtitle': isBloodMode ? '劍靈：革命 · 掌握血風高原五分流 BOSS 重生動向' : '劍靈：革命 · 及時掌握靈石動向',
+        'title': isBloodMode ? '血風高原 & 平原 BOSS 追蹤器' : '靈石追蹤器',
+        'subtitle': isBloodMode ? '劍靈：革命 · 掌握血風高原(5分流)與血風平原(2分流) BOSS 重生動向' : '劍靈：革命 · 及時掌握靈石動向',
         'nextSpawn': '預計出現時間',
         'nextWave': '下波預計時間',
         'remaining': '距離出現還有',
@@ -97,8 +101,10 @@ const I18N = {
         'btnSpawned': isBloodMode ? 'BOSS 已出現' : '已出現靈石',
         'btnUpcoming': isBloodMode ? '即將出現 (10分)' : '即將出現靈石',
         'btnCollected': isBloodMode ? '已死掉 (重置3小時)' : '已撿完',
-        'bloodBannerTitle': '血風高原 BOSS 監控面板',
-        'bloodBannerDesc': '死亡後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘 · 共 5 個分流獨立計時',
+        'bloodBannerTitle': '血風高原 BOSS (5分流)',
+        'bloodBannerDesc': '死掉後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘',
+        'bloodPlainBannerTitle': '血風平原 BOSS (2分流)',
+        'bloodPlainBannerDesc': '死掉後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘',
         // maps
         'spirit-stone-valley-ch1': '靈石谷 Ch.1',
         'spirit-stone-valley-ch2': '靈石谷 Ch.2',
@@ -113,6 +119,8 @@ const I18N = {
         'bloodwind-ch3': '血風高原 Ch.3',
         'bloodwind-ch4': '血風高原 Ch.4',
         'bloodwind-ch5': '血風高原 Ch.5',
+        'bloodplain-ch1': '血風平原 Ch.1',
+        'bloodplain-ch2': '血風平原 Ch.2',
         // toasts & modals
         'toastShorten': '✅ 採集完成！已縮短 20 分鐘',
         'toastCollected': isBloodMode ? '✅ 已紀錄擊殺！下輪出現時間：180 分鐘（3小時）後' : '✅ 採集完成！下輪出現時間：120 分鐘後',
@@ -151,8 +159,10 @@ const I18N = {
         'btnSpawned': isBloodMode ? 'Boss Spawned' : 'Spawned',
         'btnUpcoming': isBloodMode ? 'Upcoming (10m)' : 'Upcoming',
         'btnCollected': isBloodMode ? 'Boss Killed (3h)' : 'Collected',
-        'bloodBannerTitle': 'Bloodwind Highland BOSS Dashboard',
-        'bloodBannerDesc': 'Respawns 3 hours (180m) after death · 10m upcoming warning · 5 independent channels',
+        'bloodBannerTitle': 'Bloodwind Highland BOSS (5 Ch)',
+        'bloodBannerDesc': 'Respawns 3 hours (180m) after death · 10m upcoming warning',
+        'bloodPlainBannerTitle': 'Bloodwind Plain BOSS (2 Ch)',
+        'bloodPlainBannerDesc': 'Respawns 3 hours (180m) after death · 10m upcoming warning',
         // maps
         'spirit-stone-valley-ch1': 'Spirit Stone Valley Ch.1',
         'spirit-stone-valley-ch2': 'Spirit Stone Valley Ch.2',
@@ -167,6 +177,8 @@ const I18N = {
         'bloodwind-ch3': 'Bloodwind Highland Ch.3',
         'bloodwind-ch4': 'Bloodwind Highland Ch.4',
         'bloodwind-ch5': 'Bloodwind Highland Ch.5',
+        'bloodplain-ch1': 'Bloodwind Plain Ch.1',
+        'bloodplain-ch2': 'Bloodwind Plain Ch.2',
         // toasts & modals
         'toastShorten': '✅ Collected! Timer shortened by 20m',
         'toastCollected': isBloodMode ? '✅ Boss Killed! Next spawn in 180m (3h)' : '✅ Collected! Next spawn in 120m',
@@ -286,34 +298,54 @@ class SoulstoneTracker {
             const logoIcon = document.querySelector('.logo-icon');
             if (logoIcon) logoIcon.textContent = '👹';
 
-            const board = document.createElement('div');
-            board.className = 'blood-hero-board';
-            board.innerHTML = `
+            // 左邊：血風高原 (5分流)
+            const highlandBoard = document.createElement('div');
+            highlandBoard.className = 'blood-hero-board highland-board';
+            highlandBoard.innerHTML = `
                 <div class="blood-hero-header">
                     <div class="blood-hero-icon">👹</div>
                     <div class="blood-hero-text">
-                        <h2 class="blood-hero-title" data-i18n="bloodBannerTitle">血風高原 BOSS 監控面板</h2>
-                        <p class="blood-hero-desc" data-i18n="bloodBannerDesc">死亡後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘 · 共 5 個分流獨立計時</p>
+                        <h2 class="blood-hero-title" data-i18n="bloodBannerTitle">血風高原 BOSS (5分流)</h2>
+                        <p class="blood-hero-desc" data-i18n="bloodBannerDesc">死掉後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘</p>
                     </div>
                 </div>
-                <div class="blood-channels-container"></div>
+                <div class="blood-channels-container" id="highland-channels"></div>
             `;
-            grid.appendChild(board);
 
-            const channelsContainer = board.querySelector('.blood-channels-container');
+            // 右邊：血風平原 (2分流)
+            const plainBoard = document.createElement('div');
+            plainBoard.className = 'blood-hero-board plain-board';
+            plainBoard.innerHTML = `
+                <div class="blood-hero-header">
+                    <div class="blood-hero-icon plain-icon">⚔️</div>
+                    <div class="blood-hero-text">
+                        <h2 class="blood-hero-title" data-i18n="bloodPlainBannerTitle">血風平原 BOSS (2分流)</h2>
+                        <p class="blood-hero-desc" data-i18n="bloodPlainBannerDesc">死掉後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘</p>
+                    </div>
+                </div>
+                <div class="blood-channels-container" id="plain-channels"></div>
+            `;
+
+            grid.appendChild(highlandBoard);
+            grid.appendChild(plainBoard);
+
+            const highlandContainer = highlandBoard.querySelector('#highland-channels');
+            const plainContainer = plainBoard.querySelector('#plain-channels');
+
             CONFIG.MAPS.forEach(map => {
                 const chLabel = map.channel ? ` Ch.${map.channel}` : '';
+                const isPlain = map.region === 'plain';
                 const card = document.createElement('div');
-                card.className = 'map-card blood-channel-card';
+                card.className = `map-card blood-channel-card ${isPlain ? 'plain-channel-card' : 'highland-channel-card'}`;
                 card.id = `card-${map.id}`;
                 card.dataset.map = map.id;
                 card.innerHTML = `
                     <div class="card-header">
-                        <div class="map-icon blood-ch-badge">Ch.${map.channel}</div>
-                        <div class="map-info">
+                        <div class="header-left-group">
+                            <div class="map-icon blood-ch-badge ${isPlain ? 'plain-badge' : ''}">Ch.${map.channel}</div>
                             <h2 class="map-name" data-i18n="${map.id}">${map.name}${chLabel}</h2>
-                            <span class="map-status" id="status-${map.id}" data-i18n="statusWaiting">等待設定</span>
                         </div>
+                        <span class="map-status" id="status-${map.id}" data-i18n="statusWaiting">等待設定</span>
                     </div>
                     <div class="timer-display" id="timer-${map.id}">
                         <div class="timer-row">
@@ -343,26 +375,30 @@ class SoulstoneTracker {
                         </div>
                     </div>
                 `;
-                channelsContainer.appendChild(card);
+                if (isPlain) {
+                    plainContainer.appendChild(card);
+                } else {
+                    highlandContainer.appendChild(card);
+                }
             });
 
-            // 更新機制說明區塊為血風高原 BOSS 專屬說明
+            // 更新機制說明區塊為血風高原 & 血風平原 BOSS 專屬說明
             const expBox = document.querySelector('.explanation-box');
             if (expBox) {
                 expBox.innerHTML = `
-                    <h3 style="color: var(--accent-gold); margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">機制說明 / Mechanism Explanation (血風高原 BOSS)</h3>
+                    <h3 style="color: var(--accent-gold); margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">機制說明 / Mechanism Explanation (血風高原 & 血風平原 BOSS)</h3>
                     <div style="margin-bottom: 1.2rem;">
                         <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇹🇼 [TW] 繁體中文</div>
                         <ul style="margin: 0; padding-left: 20px;">
-                            <li><strong>手動點擊「已死掉 (重置3小時)」：</strong>血風高原 BOSS 被擊殺後，點擊此按鈕會將該分流的下次出現時間設定為 <strong>當下時間的 180 分鐘（3小時）後</strong>。</li>
+                            <li><strong>手動點擊「已死掉 (重置3小時)」：</strong>血風高原（左・5分流）或血風平原（右・2分流）BOSS 被擊殺後，點擊此按鈕會將該分流的下次出現時間設定為 <strong>當下時間的 180 分鐘（3小時）後</strong>。</li>
                             <li><strong>點擊「即將出現 (10分)」：</strong>當遊戲中跳出 BOSS 即將出現預告時點擊，系統會自動設定為 <strong>10 分鐘後</strong> 出現。</li>
-                            <li><strong>時間微調 (+10, -10, +1, -1)：</strong>若晚了幾分鐘才按按鈕，可使用微調按鈕往前或往後修正，讓五個分流的倒數完美貼近真實時間。</li>
+                            <li><strong>時間微調 (+10, -10, +1, -1)：</strong>若晚了幾分鐘才按按鈕，可使用微調按鈕往前或往後修正，讓各分流的倒數完美貼近真實時間。</li>
                         </ul>
                     </div>
                     <div style="margin-bottom: 0;">
                         <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇬🇧 [EN] English</div>
                         <ul style="margin: 0; padding-left: 20px;">
-                            <li><strong>"Boss Killed (3h)" Button:</strong> When the Bloodwind Highland Boss dies, click this button to set the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now.</li>
+                            <li><strong>"Boss Killed (3h)" Button:</strong> When the Bloodwind Highland (Left, 5-Ch) or Bloodwind Plain (Right, 2-Ch) Boss dies, click this button to set the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now.</li>
                             <li><strong>"Upcoming (10m)" Button:</strong> Click when the 10-minute warning icon appears in-game to set the countdown to <strong>10 minutes</strong>.</li>
                             <li><strong>Adjust Buttons (+10, -10, +1, -1):</strong> Use these to fine-tune each channel's spawn timer if recorded slightly late.</li>
                         </ul>
