@@ -718,9 +718,9 @@ body.blood-mode .site-header {
 }
 
 .blood-hero-icon {
-    font-size: 1.5rem;
-    width: 36px;
-    height: 36px;
+    font-size: 1.8rem;
+    width: 42px;
+    height: 42px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -735,14 +735,14 @@ body.blood-mode .site-header {
 }
 
 .blood-hero-title {
-    font-size: 1.05rem;
+    font-size: 1.2rem;
     font-weight: 900;
     color: var(--text-primary);
     margin-bottom: 1px;
 }
 
 .blood-hero-desc {
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
 }
 
@@ -772,21 +772,21 @@ body.blood-mode .site-header {
 .blood-channel-card .header-left-group {
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
 }
 
 .blood-channel-card .map-name {
     margin-bottom: 0;
-    font-size: 0.95rem;
+    font-size: 1.12rem;
 }
 
 .blood-channel-card .map-status {
-    font-size: 0.85rem;
+    font-size: 0.95rem;
 }
 
 .blood-channel-card .timer-display {
     margin-bottom: 0;
-    padding: 4px 8px;
+    padding: 4px 10px;
 }
 
 .blood-channel-card .timer-row:first-child {
@@ -795,15 +795,15 @@ body.blood-mode .site-header {
 }
 
 .blood-channel-card .timer-label {
-    font-size: 0.72rem;
+    font-size: 0.8rem;
 }
 
 .blood-channel-card .timer-value {
-    font-size: 0.98rem;
+    font-size: 1.15rem;
 }
 
 .blood-channel-card .timer-countdown {
-    font-size: 1.15rem;
+    font-size: 1.4rem;
 }
 
 .blood-channel-card .timer-value-container {
@@ -813,12 +813,12 @@ body.blood-mode .site-header {
 }
 
 .blood-channel-card .adjust-btns {
-    grid-template-columns: repeat(4, 28px);
+    grid-template-columns: repeat(4, 32px);
     gap: 3px;
 }
 
 .blood-channel-card .btn-adjust {
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     padding: 2px 0;
 }
 
@@ -837,18 +837,18 @@ body.blood-mode .site-header {
 .blood-channel-card .actions-bottom .btn {
     width: auto;
     flex: 1 !important;
-    font-size: 0.78rem;
-    padding: 4px 8px;
+    font-size: 0.9rem;
+    padding: 5px 8px;
 }
 
 .blood-ch-badge {
-    font-size: 0.8rem;
+    font-size: 0.92rem;
     font-weight: 900;
     color: #fca5a5;
     background: rgba(239, 68, 68, 0.12);
     border: 1px solid rgba(239, 68, 68, 0.3);
-    width: 28px;
-    height: 28px;
+    width: 34px;
+    height: 34px;
 }
 
 .blood-ch-badge.plain-badge {
