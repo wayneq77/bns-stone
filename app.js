@@ -128,6 +128,12 @@ const I18N = {
         'qkStateDisabled': '已停用',
         'qkHintDisabled': '此分流已停用，點擊不會更新時間',
         'btnDisableChannel': '停用',
+        'btnPinChannel': '定住',
+        'btnUnpinChannel': '解釘',
+        'btnAdjusting': '調整中',
+        'pinHint': '定住後此分流固定在此位置，不再自動換位',
+        'unpinHint': '解除定住，恢復依時間自動排序',
+        'adjustingHint': '微調中：此分流已暫時定住並高亮，停止操作 10 秒後自動解除',
         'btnEnableChannel': '啟用',
         'statusDisabled': '已停用',
         'toggleDisableHint': '停用後此分流固定排在最下面',
@@ -209,6 +215,12 @@ const I18N = {
         'qkStateDisabled': 'Disabled',
         'qkHintDisabled': 'This channel is disabled - clicking will not update the time',
         'btnDisableChannel': 'Disable',
+        'btnPinChannel': 'Pin',
+        'btnUnpinChannel': 'Unpin',
+        'btnAdjusting': 'Editing',
+        'pinHint': 'Pinned channels keep their position and no longer auto-reorder',
+        'unpinHint': 'Unpin to resume sorting by time',
+        'adjustingHint': 'Editing: this channel is temporarily pinned and highlighted, released after 10s idle',
         'btnEnableChannel': 'Enable',
         'statusDisabled': 'Disabled',
         'toggleDisableHint': 'Disabled channels are pinned to the bottom',
@@ -286,6 +298,18 @@ class SoulstoneTracker {
         // 被停用的分流：board → Set(分流編號)
         this.disabledChannels = {};
         Object.keys(CHANNEL_SETTINGS_ROWS).forEach(board => this.disabledChannels[board] = new Set());
+
+        // 被「定住」的分流（固定位置、不再自動換位）— 每人自己的版面偏好，存在 localStorage
+        try {
+            this.pinnedChannels = new Set(JSON.parse(localStorage.getItem('soulstone-pinned-channels') || '[]'));
+        } catch (e) {
+            this.pinnedChannels = new Set();
+        }
+
+        // 正在微調的分流：暫時釘住並高亮，避免調整途中卡片換位導致按錯分流
+        this.adjustingMapId = null;
+        this.adjustingUntil = 0;
+        this.ADJUST_PIN_DURATION = 10000; // 停止操作 10 秒後自動解除釘住
 
         // Audio Context unlocker for Autoplay policies
         this.audioCtx = null;
@@ -472,6 +496,7 @@ class SoulstoneTracker {
                         </div>
                         <div class="header-right-group">
                             <span class="map-status" id="status-${map.id}" data-i18n="statusWaiting">等待設定</span>
+                            <button type="button" class="channel-pin-btn" data-map="${map.id}">定住</button>
                             <button type="button" class="channel-toggle-btn" data-map="${map.id}">停用</button>
                         </div>
                     </div>
@@ -981,6 +1006,10 @@ class SoulstoneTracker {
             return;
         }
 
+        // 調整期間暫時釘住並高亮該分流，避免卡片換位造成誤觸
+        this.markAdjusting(mapId);
+        this.updateAllDisplays();
+
         if (!this.supabase) {
             // Fallback: 本地計算
             state.nextSpawn = new Date(state.nextSpawn.getTime() + minutesToAdd * 60 * 1000);
@@ -1119,6 +1148,8 @@ class SoulstoneTracker {
      * 開啟時間編輯器
      */
     openTimeEditor(mapId) {
+        this.markAdjusting(mapId);
+
         const card = document.getElementById(`card-${mapId}`);
         if (!card) return;
 
@@ -1385,6 +1416,7 @@ class SoulstoneTracker {
         CONFIG.MAPS.forEach(map => this.updateDisplay(map.id));
         CONFIG.MAPS.forEach(map => this.updateQuickButton(map.id));
         CONFIG.MAPS.forEach(map => this.updateChannelToggle(map.id));
+        CONFIG.MAPS.forEach(map => this.updateChannelPin(map.id));
         
         const activeCount = Object.values(this.state).filter(s => s.nextSpawn).length;
         const warningCount = Object.values(this.state).filter(s => s.nextSpawn && (s.nextSpawn.getTime() - this.getCurrentServerTime().getTime()) <= CONFIG.WARNING_BEFORE).length;
@@ -1465,16 +1497,22 @@ class SoulstoneTracker {
 
         document.querySelectorAll('.blood-channels-container').forEach(container => {
             const cards = Array.from(container.children);
-            const sorted = cards.slice().sort((a, b) => {
+
+            // 已定住的卡留在原本的位置，只有其餘的卡在剩下的空位中排序
+            const movable = cards.filter(card => !this.isChannelPinned(card.dataset.map));
+            const sortedMovable = movable.slice().sort((a, b) => {
                 const keyA = this.getSpawnSortKey(a.dataset.map);
                 const keyB = this.getSpawnSortKey(b.dataset.map);
                 return keyA < keyB ? -1 : keyA > keyB ? 1 : 0;
             });
 
-            // 順序沒變就不動 DOM，避免每秒重排造成畫面閃爍
-            if (cards.every((card, index) => card === sorted[index])) return;
+            let cursor = 0;
+            const result = cards.map(card => this.isChannelPinned(card.dataset.map) ? card : sortedMovable[cursor++]);
 
-            sorted.forEach(card => container.appendChild(card));
+            // 順序沒變就不動 DOM，避免每秒重排造成畫面閃爍
+            if (cards.every((card, index) => card === result[index])) return;
+
+            result.forEach(card => container.appendChild(card));
         });
     }
 
@@ -1501,6 +1539,79 @@ class SoulstoneTracker {
             const channel = parseInt(value, 10);
             if (!isNaN(channel)) set.add(channel);
         });
+    }
+
+    // ================================
+    // 定住 / 調整中
+    // ================================
+
+    /**
+     * 該分流目前是否釘住（手動定住 或 微調中的暫時釘住）
+     */
+    isChannelPinned(mapId) {
+        if (this.adjustingMapId === mapId && Date.now() < this.adjustingUntil) return true;
+        return this.pinnedChannels.has(mapId);
+    }
+
+    /**
+     * 該分流是否正在被微調（需要高亮）
+     */
+    isChannelAdjusting(mapId) {
+        return this.adjustingMapId === mapId && Date.now() < this.adjustingUntil;
+    }
+
+    /**
+     * 手動定住 / 解除定住（存於 localStorage，屬於個人版面偏好）
+     */
+    toggleChannelPinned(mapId) {
+        if (this.pinnedChannels.has(mapId)) {
+            this.pinnedChannels.delete(mapId);
+        } else {
+            this.pinnedChannels.add(mapId);
+        }
+
+        try {
+            localStorage.setItem('soulstone-pinned-channels', JSON.stringify(Array.from(this.pinnedChannels)));
+        } catch (e) {
+            console.warn('[ChannelPin] 無法寫入 localStorage:', e);
+        }
+
+        this.updateAllDisplays();
+    }
+
+    /**
+     * 開始微調：暫時釘住並高亮該分流，避免調整途中換位按到別人
+     */
+    markAdjusting(mapId) {
+        this.adjustingMapId = mapId;
+        this.adjustingUntil = Date.now() + this.ADJUST_PIN_DURATION;
+    }
+
+    /**
+     * 更新卡片上的定住按鈕（定住 / 解釘 / 調整中）
+     */
+    updateChannelPin(mapId) {
+        const btn = document.querySelector(`.channel-pin-btn[data-map="${mapId}"]`);
+        if (!btn) return;
+
+        const adjusting = this.isChannelAdjusting(mapId);
+        const pinned = this.pinnedChannels.has(mapId);
+
+        btn.textContent = adjusting ? t('btnAdjusting') : (pinned ? t('btnUnpinChannel') : t('btnPinChannel'));
+        btn.classList.toggle('is-pinned', pinned && !adjusting);
+        btn.classList.toggle('is-adjusting', adjusting);
+        btn.title = adjusting ? t('adjustingHint') : (pinned ? t('unpinHint') : t('pinHint'));
+    }
+
+    /**
+     * 定住 / 調整中的卡片樣式
+     */
+    applyPinState(mapId) {
+        const cardEl = document.getElementById(`card-${mapId}`);
+        if (!cardEl) return;
+
+        cardEl.classList.toggle('is-pinned', this.pinnedChannels.has(mapId));
+        cardEl.classList.toggle('is-adjusting', this.isChannelAdjusting(mapId));
     }
 
     /**
@@ -1640,6 +1751,7 @@ class SoulstoneTracker {
     updateDisplay(mapId) {
         this.updateDisplayInner(mapId);
         this.applyDisabledState(mapId);
+        this.applyPinState(mapId);
     }
 
     updateDisplayInner(mapId) {
@@ -2070,6 +2182,14 @@ class SoulstoneTracker {
             btn.addEventListener('click', (e) => {
                 const mapId = e.currentTarget.dataset.map;
                 this.handleMarkCollected(mapId);
+            });
+        });
+
+        // 定住 / 解除定住：讓該分流固定在目前位置，不再自動換位
+        document.querySelectorAll('.channel-pin-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleChannelPinned(e.currentTarget.dataset.map);
             });
         });
 
