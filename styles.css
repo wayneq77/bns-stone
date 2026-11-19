@@ -868,6 +868,8 @@ body.blood-mode .site-header {
 .blood-channel-card .timer-value {
     font-size: 1.46rem; /* +20% */
     font-weight: 900;
+    color: var(--accent-gold);
+    text-shadow: 0 0 12px rgba(255, 215, 0, 0.35);
 }
 
 .blood-channel-card .timer-countdown {
