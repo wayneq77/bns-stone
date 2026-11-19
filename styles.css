@@ -829,7 +829,11 @@ body.blood-mode .site-header {
     color: #9ca3af;
 }
 
-/* 已停用的分流：卡片內容變暗（停用按鈕維持清晰可點） */
+/* 已停用的分流：卡片內容變暗、拿掉綠色「已死掉」按鈕（停用按鈕維持清晰可點） */
+.blood-channel-card.channel-disabled .card-actions {
+    display: none;
+}
+
 .blood-channel-card.channel-disabled {
     background: rgba(15, 18, 24, 0.6);
     border-color: rgba(107, 114, 128, 0.3);
@@ -857,15 +861,18 @@ body.blood-mode .site-header {
 }
 
 .blood-channel-card .timer-label {
-    font-size: 0.85rem;
+    font-size: 1.02rem; /* +20% */
+    font-weight: 700;
 }
 
 .blood-channel-card .timer-value {
-    font-size: 1.22rem;
+    font-size: 1.46rem; /* +20% */
+    font-weight: 900;
 }
 
 .blood-channel-card .timer-countdown {
-    font-size: 1.5rem;
+    font-size: 1.8rem; /* +20% */
+    font-weight: 900;
 }
 
 .blood-channel-card .timer-value-container {
@@ -875,12 +882,13 @@ body.blood-mode .site-header {
 }
 
 .blood-channel-card .adjust-btns {
-    grid-template-columns: repeat(4, 44px);
+    grid-template-columns: repeat(4, 50px);
     gap: 4px;
 }
 
 .blood-channel-card .btn-adjust {
-    font-size: 1rem;
+    font-size: 1.2rem; /* +20% */
+    font-weight: 900;
     padding: 7px 0;
 }
 
@@ -1033,8 +1041,8 @@ body.blood-mode .site-header {
    血風高原快捷按鈕列（血風1~血風5，位置固定）
 ================================ */
 .blood-quick-bar {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin: 12px 0;
     padding: 10px;
@@ -1044,6 +1052,8 @@ body.blood-mode .site-header {
 }
 
 .quick-kill-btn {
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1100,6 +1110,11 @@ body.blood-mode .site-header {
     border-style: dashed;
 }
 
+/* 已停用 → 快捷列整格不顯示 */
+.quick-kill-btn.qk-hidden {
+    display: none;
+}
+
 /* 已停用 → 整個按鈕變暗且不可點 */
 .quick-kill-btn.qk-off {
     color: #6b7280;
@@ -1122,12 +1137,12 @@ body.blood-mode .site-header {
 
 @media (max-width: 580px) {
     .blood-quick-bar {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 6px;
         padding: 8px;
     }
 
     .quick-kill-btn {
+        flex: 1 1 calc(33.333% - 4px);
         min-height: 54px;
     }
 

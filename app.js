@@ -1434,6 +1434,9 @@ class SoulstoneTracker {
 
         btn.classList.remove('qk-idle', 'qk-live', 'qk-dead', 'qk-off');
         btn.classList.add(`qk-${kind}`);
+
+        // 停用的分流：快捷列整格隱藏，不佔版面
+        btn.classList.toggle('qk-hidden', this.isChannelDisabled(mapId));
         btn.title = hint;
         btn.setAttribute('aria-label', `${t('qkLabel', btn.dataset.channel)} - ${label}`);
         if (stateEl) stateEl.textContent = label;
