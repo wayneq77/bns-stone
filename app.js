@@ -114,13 +114,13 @@ const I18N = {
         'blood-ruffian-base-ch2': '糾土地帶 Ch.2',
         'red-dragon-forge-ch1': '赤龍火山 Ch.1',
         'red-dragon-forge-ch2': '赤龍火山 Ch.2',
-        'bloodwind-ch1': '血風高原 Ch.1',
-        'bloodwind-ch2': '血風高原 Ch.2',
-        'bloodwind-ch3': '血風高原 Ch.3',
-        'bloodwind-ch4': '血風高原 Ch.4',
-        'bloodwind-ch5': '血風高原 Ch.5',
-        'bloodplain-ch1': '血風平原 Ch.1',
-        'bloodplain-ch2': '血風平原 Ch.2',
+        'bloodwind-ch1': '血風高原',
+        'bloodwind-ch2': '血風高原',
+        'bloodwind-ch3': '血風高原',
+        'bloodwind-ch4': '血風高原',
+        'bloodwind-ch5': '血風高原',
+        'bloodplain-ch1': '血風平原',
+        'bloodplain-ch2': '血風平原',
         // toasts & modals
         'toastShorten': '✅ 採集完成！已縮短 20 分鐘',
         'toastCollected': isBloodMode ? '✅ 已紀錄擊殺！下輪出現時間：180 分鐘（3小時）後' : '✅ 採集完成！下輪出現時間：120 分鐘後',
@@ -172,13 +172,13 @@ const I18N = {
         'blood-ruffian-base-ch2': 'Blood Ruffian Base Ch.2',
         'red-dragon-forge-ch1': 'Red Dragon Forge Ch.1',
         'red-dragon-forge-ch2': 'Red Dragon Forge Ch.2',
-        'bloodwind-ch1': 'Bloodwind Highland Ch.1',
-        'bloodwind-ch2': 'Bloodwind Highland Ch.2',
-        'bloodwind-ch3': 'Bloodwind Highland Ch.3',
-        'bloodwind-ch4': 'Bloodwind Highland Ch.4',
-        'bloodwind-ch5': 'Bloodwind Highland Ch.5',
-        'bloodplain-ch1': 'Bloodwind Plain Ch.1',
-        'bloodplain-ch2': 'Bloodwind Plain Ch.2',
+        'bloodwind-ch1': 'Bloodwind Highland',
+        'bloodwind-ch2': 'Bloodwind Highland',
+        'bloodwind-ch3': 'Bloodwind Highland',
+        'bloodwind-ch4': 'Bloodwind Highland',
+        'bloodwind-ch5': 'Bloodwind Highland',
+        'bloodplain-ch1': 'Bloodwind Plain',
+        'bloodplain-ch2': 'Bloodwind Plain',
         // toasts & modals
         'toastShorten': '✅ Collected! Timer shortened by 20m',
         'toastCollected': isBloodMode ? '✅ Boss Killed! Next spawn in 180m (3h)' : '✅ Collected! Next spawn in 120m',
@@ -333,7 +333,6 @@ class SoulstoneTracker {
             const plainContainer = plainBoard.querySelector('#plain-channels');
 
             CONFIG.MAPS.forEach(map => {
-                const chLabel = map.channel ? ` Ch.${map.channel}` : '';
                 const isPlain = map.region === 'plain';
                 const card = document.createElement('div');
                 card.className = `map-card blood-channel-card ${isPlain ? 'plain-channel-card' : 'highland-channel-card'}`;
@@ -343,7 +342,7 @@ class SoulstoneTracker {
                     <div class="card-header">
                         <div class="header-left-group">
                             <div class="map-icon blood-ch-badge ${isPlain ? 'plain-badge' : ''}">Ch.${map.channel}</div>
-                            <h2 class="map-name" data-i18n="${map.id}">${map.name}${chLabel}</h2>
+                            <h2 class="map-name" data-i18n="${map.id}">${map.name}</h2>
                         </div>
                         <span class="map-status" id="status-${map.id}" data-i18n="statusWaiting">等待設定</span>
                     </div>

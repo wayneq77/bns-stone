@@ -848,19 +848,24 @@ body.blood-mode .site-header {
 }
 
 .blood-ch-badge {
-    font-size: 0.98rem;
+    font-size: 1.15rem;
     font-weight: 900;
-    color: #fca5a5;
-    background: rgba(239, 68, 68, 0.12);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    width: 36px;
-    height: 36px;
+    color: #fee2e2;
+    background: rgba(239, 68, 68, 0.32);
+    border: 2px solid rgba(239, 68, 68, 0.7);
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
+    width: auto;
+    min-width: 56px;
+    height: 44px;
+    padding: 0 10px;
+    letter-spacing: 0.02em;
 }
 
 .blood-ch-badge.plain-badge {
-    color: #c4b5fd;
-    background: rgba(139, 92, 246, 0.15);
-    border-color: rgba(139, 92, 246, 0.35);
+    color: #ede9fe;
+    background: rgba(139, 92, 246, 0.34);
+    border-color: rgba(139, 92, 246, 0.7);
+    box-shadow: 0 0 14px rgba(139, 92, 246, 0.4);
 }
 
 @media (max-width: 960px) {
