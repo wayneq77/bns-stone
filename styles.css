@@ -1149,4 +1149,9 @@ body.blood-mode .site-header {
     .qk-name {
         font-size: 1.05rem;
     }
+
+    /* 平原快捷列只有 2 顆，讓它們平均填滿整列 */
+    .blood-quick-bar.plain-quick-bar .quick-kill-btn {
+        flex: 1 1 0;
+    }
 }

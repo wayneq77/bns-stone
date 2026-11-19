@@ -116,6 +116,7 @@ const I18N = {
         'btnSaveTime': '儲存',
         'btnCancelEdit': '取消',
         'qkLabel': (n) => `血風${n}`,
+        'qkPlainLabel': (n) => `平原${n}`,
         'qkStateWaiting': '等待設定',
         'qkStateWaitingBoss': '等待中',
         'qkStateUpcoming': '即將出現',
@@ -196,6 +197,7 @@ const I18N = {
         'btnSaveTime': 'Save',
         'btnCancelEdit': 'Cancel',
         'qkLabel': (n) => `BW${n}`,
+        'qkPlainLabel': (n) => `Plain${n}`,
         'qkStateWaiting': 'Pending',
         'qkStateWaitingBoss': 'Waiting',
         'qkStateUpcoming': 'Upcoming',
@@ -412,6 +414,7 @@ class SoulstoneTracker {
                         </div>
                         <span class="server-tag ${server.tagClass}">${server.tag}</span>
                     </div>
+                    <div class="blood-quick-bar plain-quick-bar" id="plain-quick-bar-${server.id}"></div>
                     <div class="blood-channels-container" id="${server.containerId}"></div>
                 `;
                 plainBoards.appendChild(board);
@@ -424,19 +427,35 @@ class SoulstoneTracker {
             const plainContainer = plainBoards.querySelector('#plain-channels');
             const plainAsiaContainer = plainBoards.querySelector('#plain-channels-asia');
 
-            // 血風高原快捷列：血風1~血風5 位置固定，不受下方卡片自動排序影響
-            const quickBar = highlandBoard.querySelector('#highland-quick-bar');
-            CONFIG.MAPS.filter(map => map.board === 'highland').forEach(map => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'quick-kill-btn qk-idle';
-                btn.dataset.map = map.id;
-                btn.dataset.channel = map.channel;
-                btn.innerHTML = `
-                    <span class="qk-name">${t('qkLabel', map.channel)}</span>
-                    <span class="qk-state">${t('qkStateWaiting')}</span>
-                `;
-                quickBar.appendChild(btn);
+            // 快捷列：每個 board 一組（血風1~5 / 平原1~2），位置固定，不受下方卡片自動排序影響
+            const createQuickBar = (barEl, maps, labelKey) => {
+                if (!barEl) return;
+                maps.forEach(map => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'quick-kill-btn qk-idle';
+                    btn.dataset.map = map.id;
+                    btn.dataset.channel = map.channel;
+                    btn.dataset.labelKey = labelKey;
+                    btn.innerHTML = `
+                        <span class="qk-name">${t(labelKey, map.channel)}</span>
+                        <span class="qk-state">${t('qkStateWaiting')}</span>
+                    `;
+                    barEl.appendChild(btn);
+                });
+            };
+
+            createQuickBar(
+                highlandBoard.querySelector('#highland-quick-bar'),
+                CONFIG.MAPS.filter(map => map.board === 'highland'),
+                'qkLabel'
+            );
+            plainServers.forEach(server => {
+                createQuickBar(
+                    plainBoards.querySelector(`#plain-quick-bar-${server.id}`),
+                    CONFIG.MAPS.filter(map => map.board === server.id),
+                    'qkPlainLabel'
+                );
             });
 
             CONFIG.MAPS.forEach(map => {
@@ -480,11 +499,6 @@ class SoulstoneTracker {
                             <span class="timer-countdown" id="countdown-${map.id}">--:--:--</span>
                         </div>
                     </div>
-                    <div class="card-actions">
-                        <div class="actions-bottom">
-                            <button class="btn btn-success collected-btn" data-action="collected" data-map="${map.id}" data-i18n="btnCollected">已死掉 (重置3小時)</button>
-                        </div>
-                    </div>
                 `;
                 if (map.board === 'plain-asia') {
                     plainAsiaContainer.appendChild(card);
@@ -503,19 +517,17 @@ class SoulstoneTracker {
                     <div style="margin-bottom: 1.2rem;">
                         <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇹🇼 [TW] 繁體中文</div>
                         <ul style="margin: 0; padding-left: 20px;">
-                            <li><strong>手動點擊「已死掉 (重置3小時)」：</strong>血風高原（左・5分流）或血風平原（右・2分流）BOSS 被擊殺後，點擊此按鈕會將該分流的下次出現時間設定為 <strong>當下時間的 180 分鐘（3小時）後</strong>。</li>
-                            <li><strong>上方快捷列（血風1~血風5）：</strong>位置固定不會跑版，等同點擊該分流卡片的「已死掉」；只有 BOSS 即將出現或已出現時才會亮綠色，其他狀態一律變暗，避免多人同時點錯分流。</li>
+                            <li><strong>快捷列（血風1~血風5 / 平原1~平原2）：</strong>每個 board 上方都有位置固定的快捷列，就是各分流的「已死掉」按鈕；BOSS 被擊殺後點擊，該分流的下次出現時間會設定為 <strong>當下時間的 180 分鐘（3小時）後</strong>。只有 BOSS 即將出現或已出現時按鈕才會亮綠色，其他狀態一律變暗，避免多人同時點錯分流。</li>
                             <li><strong>時間微調 (+10, -10, +1, -1)：</strong>若晚了幾分鐘才按按鈕，可使用微調按鈕往前或往後修正，讓各分流的倒數完美貼近真實時間。</li>
-                            <li><strong>停用 / 啟用：</strong>卡片右上角的「停用」可把目前沒在使用的分流（例如未開的 Ch.5）關閉，停用後該分流固定排在最下面、上方快捷按鈕也會變暗不可點；再按一次「啟用」即可恢復。設定會同步到資料庫，所有人看到的都一樣。</li>
+                            <li><strong>停用 / 啟用：</strong>卡片右上角的「停用」可把目前沒在使用的分流（例如未開的 Ch.5）關閉，停用後該分流固定排在最下面、快捷列的那一格也會直接隱藏；再按一次「啟用」即可恢復。設定會同步到資料庫，所有人看到的都一樣。</li>
                         </ul>
                     </div>
                     <div style="margin-bottom: 0;">
                         <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇬🇧 [EN] English</div>
                         <ul style="margin: 0; padding-left: 20px;">
-                            <li><strong>"Boss Killed (3h)" Button:</strong> When the Bloodwind Highland (Left, 5-Ch) or Bloodwind Plain (Right, 2-Ch) Boss dies, click this button to set the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now.</li>
-                            <li><strong>Quick Bar (BW1~BW5):</strong> The fixed row above the cards acts as the "Boss Killed" button for each channel. It only turns green when the boss is about to spawn or already spawned, and stays dark otherwise so nobody clicks the wrong channel.</li>
+                            <li><strong>Quick Bar (BW1~BW5 / Plain1~Plain2):</strong> Each board has a fixed quick row above the cards which acts as the "Boss Killed" button for that channel. When the boss dies, click it to set the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now. It only turns green when the boss is about to spawn or already spawned, and stays dark otherwise so nobody clicks the wrong channel.</li>
                             <li><strong>Adjust Buttons (+10, -10, +1, -1):</strong> Use these to fine-tune each channel's spawn timer if recorded slightly late.</li>
-                            <li><strong>Disable / Enable:</strong> The "停用" button on each card switches off an unused channel (e.g. Ch.5). Disabled channels are pinned to the bottom and their quick button turns grey and stops working. Click "啟用" to bring it back. The setting is stored in the database, so everyone sees the same state.</li>
+                            <li><strong>Disable / Enable:</strong> The "停用" button on each card switches off an unused channel (e.g. Ch.5). Disabled channels are pinned to the bottom and their quick-bar cell disappears completely. Click "啟用" to bring it back. The setting is stored in the database, so everyone sees the same state.</li>
                         </ul>
                     </div>
                 `;
@@ -1402,7 +1414,7 @@ class SoulstoneTracker {
         let label = t('qkStateWaiting');
         let hint = t('qkHintIdle');
 
-        if (nameEl) nameEl.textContent = t('qkLabel', btn.dataset.channel);
+        if (nameEl) nameEl.textContent = t(btn.dataset.labelKey || 'qkLabel', btn.dataset.channel);
 
         if (this.isChannelDisabled(mapId)) {
             kind = 'off';
@@ -1438,7 +1450,7 @@ class SoulstoneTracker {
         // 停用的分流：快捷列整格隱藏，不佔版面
         btn.classList.toggle('qk-hidden', this.isChannelDisabled(mapId));
         btn.title = hint;
-        btn.setAttribute('aria-label', `${t('qkLabel', btn.dataset.channel)} - ${label}`);
+        btn.setAttribute('aria-label', `${t(btn.dataset.labelKey || 'qkLabel', btn.dataset.channel)} - ${label}`);
         if (stateEl) stateEl.textContent = label;
     }
 
@@ -1739,6 +1751,8 @@ class SoulstoneTracker {
     }
 
     updateCollectedBtnState(btn, canCollect) {
+        if (!btn) return;
+
         if (!canCollect) {
             btn.classList.add('disabled');
             btn.classList.remove('used');
