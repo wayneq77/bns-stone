@@ -87,6 +87,14 @@ const CONFIG = {
 // State Management
 // ================================
 
+// 停用狀態的設定列：存在 soulstone_timers，spawn_minutes 存放「被停用的分流編號」
+// blood 模式完全不會使用 spawn_minutes 欄位，因此借用它來存停用清單（每個 board 一列）
+const CHANNEL_SETTINGS_ROWS = {
+    'highland': 'settings_blood_highland',
+    'plain-tw': 'settings_blood_plain_tw',
+    'plain-asia': 'settings_blood_plain_asia'
+};
+
 const I18N = {
     'zh': {
         'title': isBloodMode ? '血風高原 & 平原 BOSS 追蹤器' : '靈石追蹤器',
@@ -116,6 +124,14 @@ const I18N = {
         'qkHintLive': '點擊標記此分流 BOSS 已死掉（重置 3 小時）',
         'qkHintIdle': 'BOSS 尚未出現，點擊仍會重置 3 小時（請確認）',
         'qkHintDead': '此分流 BOSS 已死掉，無需重複點擊',
+        'qkStateDisabled': '已停用',
+        'qkHintDisabled': '此分流已停用，點擊不會更新時間',
+        'btnDisableChannel': '停用',
+        'btnEnableChannel': '啟用',
+        'statusDisabled': '已停用',
+        'toggleDisableHint': '停用後此分流固定排在最下面',
+        'toggleEnableHint': '啟用後恢復依時間排序',
+        'toggleSaveFailed': '停用狀態儲存失敗，請稍後再試一次',
         'bloodBannerTitle': '血風高原 BOSS (5分流)',
         'bloodBannerDesc': '死掉後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘',
         'bloodPlainBannerTitle': '血風平原 BOSS (2分流)',
@@ -188,6 +204,14 @@ const I18N = {
         'qkHintLive': 'Click to mark this channel as killed (reset 3h)',
         'qkHintIdle': 'Boss has not spawned yet — clicking still resets 3h (please confirm)',
         'qkHintDead': 'This channel boss is already dead, no need to click again',
+        'qkStateDisabled': 'Disabled',
+        'qkHintDisabled': 'This channel is disabled - clicking will not update the time',
+        'btnDisableChannel': 'Disable',
+        'btnEnableChannel': 'Enable',
+        'statusDisabled': 'Disabled',
+        'toggleDisableHint': 'Disabled channels are pinned to the bottom',
+        'toggleEnableHint': 'Enable to resume sorting by time',
+        'toggleSaveFailed': 'Failed to save the disabled state, please try again',
         'bloodBannerTitle': 'Bloodwind Highland BOSS (5 Ch)',
         'bloodBannerDesc': 'Respawns 3 hours (180m) after death · 10m upcoming warning',
         'bloodPlainBannerTitle': 'Bloodwind Plain BOSS (2 Ch)',
@@ -257,6 +281,9 @@ class SoulstoneTracker {
         this.serverTimeOffset = 0; // 伺服器與本地時間的毫秒差 (Supabase - Local)
         this.lastSyncTime = null;
         this.currentTimeZone = localStorage.getItem('soulstone-timezone') || 'Asia/Taipei';
+        // 被停用的分流：board → Set(分流編號)
+        this.disabledChannels = {};
+        Object.keys(CHANNEL_SETTINGS_ROWS).forEach(board => this.disabledChannels[board] = new Set());
 
         // Audio Context unlocker for Autoplay policies
         this.audioCtx = null;
@@ -424,7 +451,10 @@ class SoulstoneTracker {
                             <div class="map-icon blood-ch-badge ${isPlain ? 'plain-badge' : ''}">Ch.${map.channel}</div>
                             <h2 class="map-name" data-i18n="${map.id}">${map.name}</h2>
                         </div>
-                        <span class="map-status" id="status-${map.id}" data-i18n="statusWaiting">等待設定</span>
+                        <div class="header-right-group">
+                            <span class="map-status" id="status-${map.id}" data-i18n="statusWaiting">等待設定</span>
+                            <button type="button" class="channel-toggle-btn" data-map="${map.id}">停用</button>
+                        </div>
                     </div>
                     <div class="timer-display" id="timer-${map.id}">
                         <div class="timer-row">
@@ -480,6 +510,7 @@ class SoulstoneTracker {
                             <li><strong>手動點擊「已死掉 (重置3小時)」：</strong>血風高原（左・5分流）或血風平原（右・2分流）BOSS 被擊殺後，點擊此按鈕會將該分流的下次出現時間設定為 <strong>當下時間的 180 分鐘（3小時）後</strong>。</li>
                             <li><strong>點擊「即將出現 (10分)」：</strong>當遊戲中跳出 BOSS 即將出現預告時點擊，系統會自動設定為 <strong>10 分鐘後</strong> 出現。</li>
                             <li><strong>時間微調 (+10, -10, +1, -1)：</strong>若晚了幾分鐘才按按鈕，可使用微調按鈕往前或往後修正，讓各分流的倒數完美貼近真實時間。</li>
+                            <li><strong>停用 / 啟用：</strong>卡片右上角的「停用」可把目前沒在使用的分流（例如未開的 Ch.5）關閉，停用後該分流固定排在最下面、上方快捷按鈕也會變暗不可點；再按一次「啟用」即可恢復。設定會同步到資料庫，所有人看到的都一樣。</li>
                         </ul>
                     </div>
                     <div style="margin-bottom: 0;">
@@ -488,6 +519,7 @@ class SoulstoneTracker {
                             <li><strong>"Boss Killed (3h)" Button:</strong> When the Bloodwind Highland (Left, 5-Ch) or Bloodwind Plain (Right, 2-Ch) Boss dies, click this button to set the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now.</li>
                             <li><strong>"Upcoming (10m)" Button:</strong> Click when the 10-minute warning icon appears in-game to set the countdown to <strong>10 minutes</strong>.</li>
                             <li><strong>Adjust Buttons (+10, -10, +1, -1):</strong> Use these to fine-tune each channel's spawn timer if recorded slightly late.</li>
+                            <li><strong>Disable / Enable:</strong> The "停用" button on each card switches off an unused channel (e.g. Ch.5). Disabled channels are pinned to the bottom and their quick button turns grey and stops working. Click "啟用" to bring it back. The setting is stored in the database, so everyone sees the same state.</li>
                         </ul>
                     </div>
                 `;
@@ -735,12 +767,13 @@ class SoulstoneTracker {
             // 獲取數據的同時一併同步時鐘
             await this.syncServerTime();
 
-            // 一次撈出本頁所有分流（含不同伺服器前綴）
+            // 一次撈出本頁所有分流（含不同伺服器前綴）+ 停用狀態設定列
             const dbIds = CONFIG.MAPS.map(m => this.getServerMapId(m.id));
+            const settingsIds = Object.values(CHANNEL_SETTINGS_ROWS);
             const { data, error } = await this.supabase
                 .from('soulstone_timers')
                 .select('*')
-                .in('map_id', dbIds);
+                .in('map_id', [...dbIds, ...settingsIds]);
 
             if (error) {
                 console.error('Error fetching from Supabase:', error);
@@ -749,6 +782,12 @@ class SoulstoneTracker {
 
             if (data && data.length > 0) {
                 data.forEach(row => {
+                    const settingsBoard = this.getSettingsBoard(row.map_id);
+                    if (settingsBoard) {
+                        this.applyDisabledChannelsFromRow(settingsBoard, row.spawn_minutes);
+                        return;
+                    }
+
                     const localMapId = this.getLocalMapId(row.map_id);
                     if (!localMapId) return;
                     if (this.state[localMapId]) {
@@ -772,6 +811,17 @@ class SoulstoneTracker {
 
         if (eventType === 'UPDATE' || eventType === 'INSERT') {
             const serverMapId = newRecord.map_id;
+
+            // 停用狀態設定列
+            const settingsBoard = this.getSettingsBoard(serverMapId);
+            if (settingsBoard) {
+                console.log(`[RealtimeSync] 收到停用狀態更新 (${settingsBoard})，同步中...`);
+                this.applyDisabledChannelsFromRow(settingsBoard, newRecord.spawn_minutes);
+                this.updateAllDisplays();
+                this.updateLastUpdated();
+                return;
+            }
+
             const localMapId = this.getLocalMapId(serverMapId);
             if (localMapId && this.state[localMapId]) {
                 console.log(`[RealtimeSync] 收到資料庫更新 (${localMapId})，同步中...`);
@@ -1326,6 +1376,7 @@ class SoulstoneTracker {
     updateAllDisplays() {
         CONFIG.MAPS.forEach(map => this.updateDisplay(map.id));
         CONFIG.MAPS.forEach(map => this.updateQuickButton(map.id));
+        CONFIG.MAPS.forEach(map => this.updateChannelToggle(map.id));
         
         const activeCount = Object.values(this.state).filter(s => s.nextSpawn).length;
         const warningCount = Object.values(this.state).filter(s => s.nextSpawn && (s.nextSpawn.getTime() - this.getCurrentServerTime().getTime()) <= CONFIG.WARNING_BEFORE).length;
@@ -1357,7 +1408,11 @@ class SoulstoneTracker {
 
         if (nameEl) nameEl.textContent = t('qkLabel', btn.dataset.channel);
 
-        if (state && state.nextSpawn) {
+        if (this.isChannelDisabled(mapId)) {
+            kind = 'off';
+            label = t('qkStateDisabled');
+            hint = t('qkHintDisabled');
+        } else if (state && state.nextSpawn) {
             const now = this.getCurrentServerTime().getTime();
             let spawn = state.nextSpawn.getTime();
             while (spawn + CONFIG.DESPAWN_WINDOW <= now) spawn += CONFIG.DEFAULT_INTERVAL;
@@ -1381,7 +1436,7 @@ class SoulstoneTracker {
             }
         }
 
-        btn.classList.remove('qk-idle', 'qk-live', 'qk-dead');
+        btn.classList.remove('qk-idle', 'qk-live', 'qk-dead', 'qk-off');
         btn.classList.add(`qk-${kind}`);
         btn.title = hint;
         btn.setAttribute('aria-label', `${t('qkLabel', btn.dataset.channel)} - ${label}`);
@@ -1412,12 +1467,142 @@ class SoulstoneTracker {
         });
     }
 
+    // ================================
+    // 分流停用 / 啟用
+    // ================================
+
+    /**
+     * 取得設定列所對應的 board（不是設定列則回傳 null）
+     */
+    getSettingsBoard(serverMapId) {
+        return Object.keys(CHANNEL_SETTINGS_ROWS).find(board => CHANNEL_SETTINGS_ROWS[board] === serverMapId) || null;
+    }
+
+    /**
+     * 套用資料庫設定列的停用清單
+     */
+    applyDisabledChannelsFromRow(board, spawnMinutes) {
+        const set = this.disabledChannels[board];
+        if (!set) return;
+
+        set.clear();
+        (Array.isArray(spawnMinutes) ? spawnMinutes : []).forEach(value => {
+            const channel = parseInt(value, 10);
+            if (!isNaN(channel)) set.add(channel);
+        });
+    }
+
+    /**
+     * 該分流是否已被停用
+     */
+    isChannelDisabled(mapId) {
+        const map = CONFIG.MAPS.find(m => m.id === mapId);
+        if (!map) return false;
+
+        const set = this.disabledChannels[map.board];
+        return !!(set && set.has(map.channel));
+    }
+
+    /**
+     * 切換分流的停用狀態：停用後固定排在最下面，狀態寫入資料庫供所有人同步
+     */
+    async toggleChannelDisabled(mapId) {
+        const map = CONFIG.MAPS.find(m => m.id === mapId);
+        if (!map) return;
+
+        const board = map.board;
+        const settingsRow = CHANNEL_SETTINGS_ROWS[board];
+        if (!settingsRow) return;
+
+        const set = this.disabledChannels[board];
+        const previous = new Set(set);
+        if (set.has(map.channel)) {
+            set.delete(map.channel);
+        } else {
+            set.add(map.channel);
+        }
+
+        // 先更新畫面，再寫入資料庫
+        this.updateAllDisplays();
+
+        if (!this.supabase) {
+            console.warn('[ChannelToggle] 未連線資料庫，停用狀態僅暫存於本頁');
+            return;
+        }
+
+        const channels = Array.from(set).sort((a, b) => a - b);
+        try {
+            const { error } = await this.supabase
+                .from('soulstone_timers')
+                .upsert({
+                    map_id: settingsRow,
+                    spawn_minutes: channels,
+                    updated_at: this.getCurrentServerTime().toISOString()
+                }, { onConflict: 'map_id' });
+
+            if (error) throw error;
+
+            // 讀回比對，確保寫入成功且其他人看到相同狀態
+            const { data, error: readError } = await this.supabase
+                .from('soulstone_timers')
+                .select('spawn_minutes')
+                .eq('map_id', settingsRow)
+                .maybeSingle();
+
+            if (readError) throw readError;
+
+            this.applyDisabledChannelsFromRow(board, data ? data.spawn_minutes : channels);
+            this.updateAllDisplays();
+            console.log(`[ChannelToggle] ${mapId} 停用狀態已寫入 (${channels.join(',') || '無'})`);
+        } catch (e) {
+            console.error('[ChannelToggle] 寫入停用狀態失敗:', e);
+            this.disabledChannels[board] = previous;
+            this.updateAllDisplays();
+            alert(t('toggleSaveFailed'));
+        }
+    }
+
+    /**
+     * 更新卡片上的停用/啟用按鈕
+     */
+    updateChannelToggle(mapId) {
+        const btn = document.querySelector(`.channel-toggle-btn[data-map="${mapId}"]`);
+        if (!btn) return;
+
+        const disabled = this.isChannelDisabled(mapId);
+        btn.textContent = disabled ? t('btnEnableChannel') : t('btnDisableChannel');
+        btn.classList.toggle('is-disabled', disabled);
+        btn.title = disabled ? t('toggleEnableHint') : t('toggleDisableHint');
+        btn.setAttribute('aria-pressed', disabled ? 'true' : 'false');
+    }
+
+    /**
+     * 停用中的分流：狀態文字改為「已停用」，卡片內容變暗
+     */
+    applyDisabledState(mapId) {
+        const cardEl = document.getElementById(`card-${mapId}`);
+        if (!cardEl) return;
+
+        const disabled = this.isChannelDisabled(mapId);
+        cardEl.classList.toggle('channel-disabled', disabled);
+        if (!disabled) return;
+
+        const statusEl = document.getElementById(`status-${mapId}`);
+        if (statusEl) {
+            statusEl.textContent = t('statusDisabled');
+            statusEl.className = 'map-status disabled';
+        }
+    }
+
     /**
      * 排序用的時間鍵：越小越先出現
      */
     getSpawnSortKey(mapId) {
+        // 已停用的分流一律排在最下面
+        if (this.isChannelDisabled(mapId)) return Number.MAX_SAFE_INTEGER;
+
         const state = this.state[mapId];
-        if (!state || !state.nextSpawn) return Number.MAX_SAFE_INTEGER;
+        if (!state || !state.nextSpawn) return Number.MAX_SAFE_INTEGER - 1;
 
         const spawnTime = state.nextSpawn.getTime();
         const now = this.getCurrentServerTime().getTime();
@@ -1442,6 +1627,11 @@ class SoulstoneTracker {
      * ====================================================================
      */
     updateDisplay(mapId) {
+        this.updateDisplayInner(mapId);
+        this.applyDisabledState(mapId);
+    }
+
+    updateDisplayInner(mapId) {
         const state = this.state[mapId];
         const now = this.getCurrentServerTime();
 
@@ -1870,19 +2060,38 @@ class SoulstoneTracker {
             });
         });
 
+        // 停用 / 啟用分流：停用後固定排在最下面
+        document.querySelectorAll('.channel-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleChannelDisabled(e.currentTarget.dataset.map);
+            });
+        });
+
         // 血風高原快捷按鈕（血風1~血風5）：位置固定，避免卡片重排後點錯分流
         document.querySelectorAll('.quick-kill-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const mapId = e.currentTarget.dataset.map;
                 const state = this.state[mapId];
 
+                // 事件結束後 currentTarget 會變 null，先取出按鈕參照
+                const btn = e.currentTarget;
+
+                // 已停用 → 不做任何事，避免誤寫入
+                if (this.isChannelDisabled(mapId)) {
+                    console.warn(`[QuickKill] ${mapId} 已停用，略過`);
+                    btn.classList.add('qk-shake');
+                    setTimeout(() => btn.classList.remove('qk-shake'), 400);
+                    return;
+                }
+
                 // 已死掉 → 不重複推算，避免多人同時點擊把時間越推越遠
                 const alreadyDead = state && state.nextSpawn && state.collectedUsed
                     && state.nextSpawn.getTime() > this.getCurrentServerTime().getTime();
                 if (alreadyDead) {
                     console.warn(`[QuickKill] ${mapId} 已是死亡狀態，略過重複點擊`);
-                    e.currentTarget.classList.add('qk-shake');
-                    setTimeout(() => e.currentTarget.classList.remove('qk-shake'), 400);
+                    btn.classList.add('qk-shake');
+                    setTimeout(() => btn.classList.remove('qk-shake'), 400);
                     return;
                 }
 

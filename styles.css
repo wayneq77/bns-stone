@@ -790,6 +790,62 @@ body.blood-mode .site-header {
     font-size: 1.02rem;
 }
 
+.blood-channel-card .header-right-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ================================
+   停用 / 啟用 分流
+================================ */
+.channel-toggle-btn {
+    background: rgba(107, 114, 128, 0.22);
+    color: var(--text-secondary);
+    border: 1px solid rgba(107, 114, 128, 0.5);
+    border-radius: var(--radius-sm);
+    padding: 5px 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: var(--font-main);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.channel-toggle-btn:hover {
+    background: rgba(239, 68, 68, 0.22);
+    color: #fecaca;
+    border-color: rgba(239, 68, 68, 0.6);
+}
+
+.channel-toggle-btn.is-disabled {
+    background: rgba(239, 68, 68, 0.25);
+    color: #fecaca;
+    border-color: rgba(239, 68, 68, 0.65);
+}
+
+.map-status.disabled {
+    color: #9ca3af;
+}
+
+/* 已停用的分流：卡片內容變暗（停用按鈕維持清晰可點） */
+.blood-channel-card.channel-disabled {
+    background: rgba(15, 18, 24, 0.6);
+    border-color: rgba(107, 114, 128, 0.3);
+}
+
+.blood-channel-card.channel-disabled .blood-ch-badge,
+.blood-channel-card.channel-disabled .map-name,
+.blood-channel-card.channel-disabled .map-status,
+.blood-channel-card.channel-disabled .timer-label,
+.blood-channel-card.channel-disabled .timer-value,
+.blood-channel-card.channel-disabled .timer-countdown,
+.blood-channel-card.channel-disabled .btn-adjust {
+    opacity: 0.32;
+    filter: grayscale(1);
+}
+
 .blood-channel-card .timer-display {
     margin-bottom: 0;
     padding: 4px 10px;
@@ -1042,6 +1098,16 @@ body.blood-mode .site-header {
     background: rgba(55, 65, 81, 0.35);
     border-color: rgba(107, 114, 128, 0.45);
     border-style: dashed;
+}
+
+/* 已停用 → 整個按鈕變暗且不可點 */
+.quick-kill-btn.qk-off {
+    color: #6b7280;
+    background: rgba(17, 24, 39, 0.95);
+    border-color: #4b5563;
+    border-style: dotted;
+    cursor: not-allowed;
+    opacity: 0.8;
 }
 
 .quick-kill-btn.qk-shake {
