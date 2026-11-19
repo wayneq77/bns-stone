@@ -972,3 +972,100 @@ body.blood-mode .site-header {
     background: rgba(20, 184, 166, 0.22);
     border: 1px solid rgba(20, 184, 166, 0.7);
 }
+
+/* ================================
+   血風高原快捷按鈕列（血風1~血風5，位置固定）
+================================ */
+.blood-quick-bar {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.quick-kill-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-height: 64px;
+    padding: 8px 4px;
+    text-align: center;
+    border-radius: var(--radius-sm);
+    border: 2px solid transparent;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.quick-kill-btn:active {
+    transform: scale(0.96);
+}
+
+.qk-name {
+    font-size: 1.2rem;
+    font-weight: 900;
+    line-height: 1.15;
+}
+
+.qk-state {
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.15;
+    opacity: 0.92;
+}
+
+/* BOSS 即將出現 / 出現中 → 綠色，可以按 */
+.quick-kill-btn.qk-live {
+    color: #d1fae5;
+    background: rgba(16, 185, 129, 0.32);
+    border-color: var(--btn-success);
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.45);
+}
+
+/* 已死掉 → 變暗，不再重複推算時間 */
+.quick-kill-btn.qk-dead {
+    color: #6b7280;
+    background: rgba(17, 24, 39, 0.9);
+    border-color: #374151;
+    cursor: not-allowed;
+}
+
+/* 尚未接近出現 → 中性 */
+.quick-kill-btn.qk-idle {
+    color: var(--text-secondary);
+    background: rgba(55, 65, 81, 0.35);
+    border-color: rgba(107, 114, 128, 0.45);
+    border-style: dashed;
+}
+
+.quick-kill-btn.qk-shake {
+    animation: qk-shake 0.35s ease;
+}
+
+@keyframes qk-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+
+@media (max-width: 580px) {
+    .blood-quick-bar {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+        padding: 8px;
+    }
+
+    .quick-kill-btn {
+        min-height: 54px;
+    }
+
+    .qk-name {
+        font-size: 1.05rem;
+    }
+}

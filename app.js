@@ -107,6 +107,15 @@ const I18N = {
         'editTimeHint': '點擊手動編輯出現時間',
         'btnSaveTime': '儲存',
         'btnCancelEdit': '取消',
+        'qkLabel': (n) => `血風${n}`,
+        'qkStateWaiting': '等待設定',
+        'qkStateWaitingBoss': '等待中',
+        'qkStateUpcoming': '即將出現',
+        'qkStateActive': '出現中',
+        'qkStateDead': '已死掉',
+        'qkHintLive': '點擊標記此分流 BOSS 已死掉（重置 3 小時）',
+        'qkHintIdle': 'BOSS 尚未出現，點擊仍會重置 3 小時（請確認）',
+        'qkHintDead': '此分流 BOSS 已死掉，無需重複點擊',
         'bloodBannerTitle': '血風高原 BOSS (5分流)',
         'bloodBannerDesc': '死掉後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘',
         'bloodPlainBannerTitle': '血風平原 BOSS (2分流)',
@@ -170,6 +179,15 @@ const I18N = {
         'editTimeHint': 'Click to edit spawn time',
         'btnSaveTime': 'Save',
         'btnCancelEdit': 'Cancel',
+        'qkLabel': (n) => `BW${n}`,
+        'qkStateWaiting': 'Pending',
+        'qkStateWaitingBoss': 'Waiting',
+        'qkStateUpcoming': 'Upcoming',
+        'qkStateActive': 'Active',
+        'qkStateDead': 'Dead',
+        'qkHintLive': 'Click to mark this channel as killed (reset 3h)',
+        'qkHintIdle': 'Boss has not spawned yet — clicking still resets 3h (please confirm)',
+        'qkHintDead': 'This channel boss is already dead, no need to click again',
         'bloodBannerTitle': 'Bloodwind Highland BOSS (5 Ch)',
         'bloodBannerDesc': 'Respawns 3 hours (180m) after death · 10m upcoming warning',
         'bloodPlainBannerTitle': 'Bloodwind Plain BOSS (2 Ch)',
@@ -342,6 +360,7 @@ class SoulstoneTracker {
                         <p class="blood-hero-desc" data-i18n="bloodBannerDesc">死掉後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘</p>
                     </div>
                 </div>
+                <div class="blood-quick-bar" id="highland-quick-bar"></div>
                 <div class="blood-channels-container" id="highland-channels"></div>
             `;
 
@@ -377,6 +396,22 @@ class SoulstoneTracker {
             const highlandContainer = highlandBoard.querySelector('#highland-channels');
             const plainContainer = plainBoards.querySelector('#plain-channels');
             const plainAsiaContainer = plainBoards.querySelector('#plain-channels-asia');
+
+            // 血風高原快捷列：血風1~血風5 位置固定，不受下方卡片自動排序影響
+            const quickBar = highlandBoard.querySelector('#highland-quick-bar');
+            CONFIG.MAPS.filter(map => map.board === 'highland').forEach(map => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'quick-kill-btn qk-idle';
+                btn.dataset.map = map.id;
+                btn.dataset.channel = map.channel;
+                btn.innerHTML = `
+                    <span class="qk-name">${t('qkLabel', map.channel)}</span>
+                    <span class="qk-state">${t('qkStateWaiting')}</span>
+                `;
+                quickBar.appendChild(btn);
+            });
+
             CONFIG.MAPS.forEach(map => {
                 const isPlain = map.region === 'plain';
                 const card = document.createElement('div');
@@ -1290,6 +1325,7 @@ class SoulstoneTracker {
 
     updateAllDisplays() {
         CONFIG.MAPS.forEach(map => this.updateDisplay(map.id));
+        CONFIG.MAPS.forEach(map => this.updateQuickButton(map.id));
         
         const activeCount = Object.values(this.state).filter(s => s.nextSpawn).length;
         const warningCount = Object.values(this.state).filter(s => s.nextSpawn && (s.nextSpawn.getTime() - this.getCurrentServerTime().getTime()) <= CONFIG.WARNING_BEFORE).length;
@@ -1300,6 +1336,56 @@ class SoulstoneTracker {
 
         // 血風卡片依「出現時間」自動排序：最快出現的置頂
         this.sortBloodChannels();
+    }
+
+    /**
+     * 更新血風高原快捷按鈕（血風1~血風5）的狀態與外觀
+     *   - live：BOSS 即將出現或已出現 → 綠色，可點擊
+     *   - dead：BOSS 已死掉、等待重生 → 變暗，不可重複點擊
+     *   - idle：尚未接近出現時間 → 中性
+     */
+    updateQuickButton(mapId) {
+        const btn = document.querySelector(`.quick-kill-btn[data-map="${mapId}"]`);
+        if (!btn) return;
+
+        const state = this.state[mapId];
+        const stateEl = btn.querySelector('.qk-state');
+        const nameEl = btn.querySelector('.qk-name');
+        let kind = 'idle';
+        let label = t('qkStateWaiting');
+        let hint = t('qkHintIdle');
+
+        if (nameEl) nameEl.textContent = t('qkLabel', btn.dataset.channel);
+
+        if (state && state.nextSpawn) {
+            const now = this.getCurrentServerTime().getTime();
+            let spawn = state.nextSpawn.getTime();
+            while (spawn + CONFIG.DESPAWN_WINDOW <= now) spawn += CONFIG.DEFAULT_INTERVAL;
+            const remaining = spawn - now;
+
+            if (remaining <= 0) {
+                kind = 'live';
+                label = t('qkStateActive');
+                hint = t('qkHintLive');
+            } else if (remaining <= CONFIG.WARNING_BEFORE) {
+                kind = 'live';
+                label = t('qkStateUpcoming');
+                hint = t('qkHintLive');
+            } else if (state.collectedUsed) {
+                kind = 'dead';
+                label = t('qkStateDead');
+                hint = t('qkHintDead');
+            } else {
+                kind = 'idle';
+                label = t('qkStateWaitingBoss');
+            }
+        }
+
+        btn.classList.remove('qk-idle', 'qk-live', 'qk-dead');
+        btn.classList.add(`qk-${kind}`);
+        btn.title = hint;
+        btn.setAttribute('aria-label', `${t('qkLabel', btn.dataset.channel)} - ${label}`);
+        if (stateEl) stateEl.textContent = label;
     }
 
     /**
@@ -1781,6 +1867,27 @@ class SoulstoneTracker {
             btn.addEventListener('click', (e) => {
                 const mapId = e.currentTarget.dataset.map;
                 this.handleMarkCollected(mapId);
+            });
+        });
+
+        // 血風高原快捷按鈕（血風1~血風5）：位置固定，避免卡片重排後點錯分流
+        document.querySelectorAll('.quick-kill-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const mapId = e.currentTarget.dataset.map;
+                const state = this.state[mapId];
+
+                // 已死掉 → 不重複推算，避免多人同時點擊把時間越推越遠
+                const alreadyDead = state && state.nextSpawn && state.collectedUsed
+                    && state.nextSpawn.getTime() > this.getCurrentServerTime().getTime();
+                if (alreadyDead) {
+                    console.warn(`[QuickKill] ${mapId} 已是死亡狀態，略過重複點擊`);
+                    e.currentTarget.classList.add('qk-shake');
+                    setTimeout(() => e.currentTarget.classList.remove('qk-shake'), 400);
+                    return;
+                }
+
+                await this.markCollected(mapId);
+                this.updateQuickButton(mapId);
             });
         });
     }
