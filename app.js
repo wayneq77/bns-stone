@@ -481,10 +481,6 @@ class SoulstoneTracker {
                         </div>
                     </div>
                     <div class="card-actions">
-                        <div class="actions-top">
-                            <button class="btn btn-primary set-btn" data-action="set" data-map="${map.id}" data-i18n="btnSpawned">BOSS 已出現</button>
-                            <button class="btn btn-info interval-btn" data-action="interval" data-map="${map.id}" data-i18n="btnUpcoming">即將出現 (10分)</button>
-                        </div>
                         <div class="actions-bottom">
                             <button class="btn btn-success collected-btn" data-action="collected" data-map="${map.id}" data-i18n="btnCollected">已死掉 (重置3小時)</button>
                         </div>
@@ -508,7 +504,7 @@ class SoulstoneTracker {
                         <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇹🇼 [TW] 繁體中文</div>
                         <ul style="margin: 0; padding-left: 20px;">
                             <li><strong>手動點擊「已死掉 (重置3小時)」：</strong>血風高原（左・5分流）或血風平原（右・2分流）BOSS 被擊殺後，點擊此按鈕會將該分流的下次出現時間設定為 <strong>當下時間的 180 分鐘（3小時）後</strong>。</li>
-                            <li><strong>點擊「即將出現 (10分)」：</strong>當遊戲中跳出 BOSS 即將出現預告時點擊，系統會自動設定為 <strong>10 分鐘後</strong> 出現。</li>
+                            <li><strong>上方快捷列（血風1~血風5）：</strong>位置固定不會跑版，等同點擊該分流卡片的「已死掉」；只有 BOSS 即將出現或已出現時才會亮綠色，其他狀態一律變暗，避免多人同時點錯分流。</li>
                             <li><strong>時間微調 (+10, -10, +1, -1)：</strong>若晚了幾分鐘才按按鈕，可使用微調按鈕往前或往後修正，讓各分流的倒數完美貼近真實時間。</li>
                             <li><strong>停用 / 啟用：</strong>卡片右上角的「停用」可把目前沒在使用的分流（例如未開的 Ch.5）關閉，停用後該分流固定排在最下面、上方快捷按鈕也會變暗不可點；再按一次「啟用」即可恢復。設定會同步到資料庫，所有人看到的都一樣。</li>
                         </ul>
@@ -517,7 +513,7 @@ class SoulstoneTracker {
                         <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇬🇧 [EN] English</div>
                         <ul style="margin: 0; padding-left: 20px;">
                             <li><strong>"Boss Killed (3h)" Button:</strong> When the Bloodwind Highland (Left, 5-Ch) or Bloodwind Plain (Right, 2-Ch) Boss dies, click this button to set the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now.</li>
-                            <li><strong>"Upcoming (10m)" Button:</strong> Click when the 10-minute warning icon appears in-game to set the countdown to <strong>10 minutes</strong>.</li>
+                            <li><strong>Quick Bar (BW1~BW5):</strong> The fixed row above the cards acts as the "Boss Killed" button for each channel. It only turns green when the boss is about to spawn or already spawned, and stays dark otherwise so nobody clicks the wrong channel.</li>
                             <li><strong>Adjust Buttons (+10, -10, +1, -1):</strong> Use these to fine-tune each channel's spawn timer if recorded slightly late.</li>
                             <li><strong>Disable / Enable:</strong> The "停用" button on each card switches off an unused channel (e.g. Ch.5). Disabled channels are pinned to the bottom and their quick button turns grey and stops working. Click "啟用" to bring it back. The setting is stored in the database, so everyone sees the same state.</li>
                         </ul>

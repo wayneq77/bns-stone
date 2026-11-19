@@ -886,7 +886,7 @@ body.blood-mode .site-header {
 
 .blood-channel-card .card-actions {
     display: grid;
-    grid-template-columns: 1.35fr 1fr;
+    grid-template-columns: 1fr;
     gap: 5px;
 }
 
