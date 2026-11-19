@@ -58,14 +58,17 @@ const CONFIG = {
     // Map definitions
     MAPS: isBloodMode ? [
         // 左側：血風高原 (5分流)
-        { id: 'bloodwind-ch1', name: '血風高原', region: 'highland', channel: 1, icon: '👹' },
-        { id: 'bloodwind-ch2', name: '血風高原', region: 'highland', channel: 2, icon: '👹' },
-        { id: 'bloodwind-ch3', name: '血風高原', region: 'highland', channel: 3, icon: '👹' },
-        { id: 'bloodwind-ch4', name: '血風高原', region: 'highland', channel: 4, icon: '👹' },
-        { id: 'bloodwind-ch5', name: '血風高原', region: 'highland', channel: 5, icon: '👹' },
-        // 右側：血風平原 (2分流)
-        { id: 'bloodplain-ch1', name: '血風平原', region: 'plain', channel: 1, icon: '⚔️' },
-        { id: 'bloodplain-ch2', name: '血風平原', region: 'plain', channel: 2, icon: '⚔️' }
+        { id: 'bloodwind-ch1', dbId: 'blood_bloodwind-ch1', server: 'blood', board: 'highland', name: '血風高原', region: 'highland', channel: 1, icon: '👹' },
+        { id: 'bloodwind-ch2', dbId: 'blood_bloodwind-ch2', server: 'blood', board: 'highland', name: '血風高原', region: 'highland', channel: 2, icon: '👹' },
+        { id: 'bloodwind-ch3', dbId: 'blood_bloodwind-ch3', server: 'blood', board: 'highland', name: '血風高原', region: 'highland', channel: 3, icon: '👹' },
+        { id: 'bloodwind-ch4', dbId: 'blood_bloodwind-ch4', server: 'blood', board: 'highland', name: '血風高原', region: 'highland', channel: 4, icon: '👹' },
+        { id: 'bloodwind-ch5', dbId: 'blood_bloodwind-ch5', server: 'blood', board: 'highland', name: '血風高原', region: 'highland', channel: 5, icon: '👹' },
+        // 右側：血風平原 繁體1 (2分流)
+        { id: 'bloodplain-ch1', dbId: 'ct1_bloodplain-ch1', server: 'ct1', board: 'plain-tw', name: '血風平原', region: 'plain', channel: 1, icon: '⚔️' },
+        { id: 'bloodplain-ch2', dbId: 'ct1_bloodplain-ch2', server: 'ct1', board: 'plain-tw', name: '血風平原', region: 'plain', channel: 2, icon: '⚔️' },
+        // 右側：血風平原 ASIA1 (2分流)
+        { id: 'bloodplain-ch1-asia', dbId: 'asia1_bloodplain-ch1', server: 'asia1', board: 'plain-asia', name: '血風平原', region: 'plain', channel: 1, icon: '⚔️' },
+        { id: 'bloodplain-ch2-asia', dbId: 'asia1_bloodplain-ch2', server: 'asia1', board: 'plain-asia', name: '血風平原', region: 'plain', channel: 2, icon: '⚔️' }
     ] : [
         // Top row: Ch.1
         { id: 'spirit-stone-valley-ch1', name: '靈石谷', channel: 1, icon: '🏔️' },
@@ -101,6 +104,9 @@ const I18N = {
         'btnSpawned': isBloodMode ? 'BOSS 已出現' : '已出現靈石',
         'btnUpcoming': isBloodMode ? '即將出現 (10分)' : '即將出現靈石',
         'btnCollected': isBloodMode ? '已死掉 (重置3小時)' : '已撿完',
+        'editTimeHint': '點擊手動編輯出現時間',
+        'btnSaveTime': '儲存',
+        'btnCancelEdit': '取消',
         'bloodBannerTitle': '血風高原 BOSS (5分流)',
         'bloodBannerDesc': '死掉後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘',
         'bloodPlainBannerTitle': '血風平原 BOSS (2分流)',
@@ -121,6 +127,8 @@ const I18N = {
         'bloodwind-ch5': '血風高原',
         'bloodplain-ch1': '血風平原',
         'bloodplain-ch2': '血風平原',
+        'bloodplain-ch1-asia': '血風平原',
+        'bloodplain-ch2-asia': '血風平原',
         // toasts & modals
         'toastShorten': '✅ 採集完成！已縮短 20 分鐘',
         'toastCollected': isBloodMode ? '✅ 已紀錄擊殺！下輪出現時間：180 分鐘（3小時）後' : '✅ 採集完成！下輪出現時間：120 分鐘後',
@@ -159,6 +167,9 @@ const I18N = {
         'btnSpawned': isBloodMode ? 'Boss Spawned' : 'Spawned',
         'btnUpcoming': isBloodMode ? 'Upcoming (10m)' : 'Upcoming',
         'btnCollected': isBloodMode ? 'Boss Killed (3h)' : 'Collected',
+        'editTimeHint': 'Click to edit spawn time',
+        'btnSaveTime': 'Save',
+        'btnCancelEdit': 'Cancel',
         'bloodBannerTitle': 'Bloodwind Highland BOSS (5 Ch)',
         'bloodBannerDesc': 'Respawns 3 hours (180m) after death · 10m upcoming warning',
         'bloodPlainBannerTitle': 'Bloodwind Plain BOSS (2 Ch)',
@@ -179,6 +190,8 @@ const I18N = {
         'bloodwind-ch5': 'Bloodwind Highland',
         'bloodplain-ch1': 'Bloodwind Plain',
         'bloodplain-ch2': 'Bloodwind Plain',
+        'bloodplain-ch1-asia': 'Bloodwind Plain',
+        'bloodplain-ch2-asia': 'Bloodwind Plain',
         // toasts & modals
         'toastShorten': '✅ Collected! Timer shortened by 20m',
         'toastCollected': isBloodMode ? '✅ Boss Killed! Next spawn in 180m (3h)' : '✅ Collected! Next spawn in 120m',
@@ -256,6 +269,26 @@ class SoulstoneTracker {
         this.init();
     }
 
+    /**
+     * 本地 map id → 資料庫 map_id
+     * 血風模式的平原分流分屬不同伺服器（繁體1 / ASIA1），前綴不同
+     */
+    getServerMapId(localMapId) {
+        const map = CONFIG.MAPS.find(m => m.id === localMapId);
+        return map && map.dbId ? map.dbId : `${currentServer}_${localMapId}`;
+    }
+
+    /**
+     * 資料庫 map_id → 本地 map id（找不到回傳 null）
+     */
+    getLocalMapId(serverMapId) {
+        const map = CONFIG.MAPS.find(m => m.dbId === serverMapId);
+        if (map) return map.id;
+
+        const prefix = `${currentServer}_`;
+        return serverMapId.startsWith(prefix) ? serverMapId.slice(prefix.length) : null;
+    }
+
     async init() {
         // Initialize maps state
         CONFIG.MAPS.forEach(map => {
@@ -312,26 +345,38 @@ class SoulstoneTracker {
                 <div class="blood-channels-container" id="highland-channels"></div>
             `;
 
-            // 右邊：血風平原 (2分流)
-            const plainBoard = document.createElement('div');
-            plainBoard.className = 'blood-hero-board plain-board';
-            plainBoard.innerHTML = `
-                <div class="blood-hero-header">
-                    <div class="blood-hero-icon plain-icon">⚔️</div>
-                    <div class="blood-hero-text">
-                        <h2 class="blood-hero-title" data-i18n="bloodPlainBannerTitle">血風平原 BOSS (2分流)</h2>
-                        <p class="blood-hero-desc" data-i18n="bloodPlainBannerDesc">死掉後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘</p>
+            // 右邊：血風平原 — 繁體1 / ASIA1 各一份 (各 2分流)
+            const plainBoards = document.createElement('div');
+            plainBoards.className = 'plain-boards';
+
+            const plainServers = [
+                { id: 'plain-tw', containerId: 'plain-channels', tag: '繁體1', tagClass: 'server-tag-tw' },
+                { id: 'plain-asia', containerId: 'plain-channels-asia', tag: 'ASIA1', tagClass: 'server-tag-asia' }
+            ];
+
+            plainServers.forEach(server => {
+                const board = document.createElement('div');
+                board.className = 'blood-hero-board plain-board';
+                board.innerHTML = `
+                    <div class="blood-hero-header">
+                        <div class="blood-hero-icon plain-icon">⚔️</div>
+                        <div class="blood-hero-text">
+                            <h2 class="blood-hero-title" data-i18n="bloodPlainBannerTitle">血風平原 BOSS (2分流)</h2>
+                            <p class="blood-hero-desc" data-i18n="bloodPlainBannerDesc">死掉後 3 小時（180 分鐘）再次出現 · 即將出現預告 10 分鐘</p>
+                        </div>
+                        <span class="server-tag ${server.tagClass}">${server.tag}</span>
                     </div>
-                </div>
-                <div class="blood-channels-container" id="plain-channels"></div>
-            `;
+                    <div class="blood-channels-container" id="${server.containerId}"></div>
+                `;
+                plainBoards.appendChild(board);
+            });
 
             grid.appendChild(highlandBoard);
-            grid.appendChild(plainBoard);
+            grid.appendChild(plainBoards);
 
             const highlandContainer = highlandBoard.querySelector('#highland-channels');
-            const plainContainer = plainBoard.querySelector('#plain-channels');
-
+            const plainContainer = plainBoards.querySelector('#plain-channels');
+            const plainAsiaContainer = plainBoards.querySelector('#plain-channels-asia');
             CONFIG.MAPS.forEach(map => {
                 const isPlain = map.region === 'plain';
                 const card = document.createElement('div');
@@ -357,6 +402,12 @@ class SoulstoneTracker {
                                     <button class="btn-adjust" data-action="adjust" data-amount="-1" data-map="${map.id}">-1</button>
                                     <button class="btn-adjust" data-action="adjust" data-amount="1" data-map="${map.id}">+1</button>
                                 </div>
+                                <div class="time-editor" hidden>
+                                    <input type="datetime-local" step="1" class="time-editor-input" data-map="${map.id}">
+                                    <button class="btn btn-primary btn-sm time-editor-save" data-map="${map.id}" data-i18n="btnSaveTime">儲存</button>
+                                    <button class="btn btn-ghost btn-sm time-editor-cancel" data-map="${map.id}" data-i18n="btnCancelEdit">取消</button>
+                                    <span class="time-editor-hint"></span>
+                                </div>
                             </div>
                         </div>
                         <div class="timer-row">
@@ -374,7 +425,9 @@ class SoulstoneTracker {
                         </div>
                     </div>
                 `;
-                if (isPlain) {
+                if (map.board === 'plain-asia') {
+                    plainAsiaContainer.appendChild(card);
+                } else if (map.board === 'plain-tw') {
                     plainContainer.appendChild(card);
                 } else {
                     highlandContainer.appendChild(card);
@@ -431,6 +484,12 @@ class SoulstoneTracker {
                                 <button class="btn-adjust" data-action="adjust" data-amount="10" data-map="${map.id}">+10</button>
                                 <button class="btn-adjust" data-action="adjust" data-amount="-1" data-map="${map.id}">-1</button>
                                 <button class="btn-adjust" data-action="adjust" data-amount="1" data-map="${map.id}">+1</button>
+                            </div>
+                            <div class="time-editor" hidden>
+                                <input type="datetime-local" step="1" class="time-editor-input" data-map="${map.id}">
+                                <button class="btn btn-primary btn-sm time-editor-save" data-map="${map.id}" data-i18n="btnSaveTime">儲存</button>
+                                <button class="btn btn-ghost btn-sm time-editor-cancel" data-map="${map.id}" data-i18n="btnCancelEdit">取消</button>
+                                <span class="time-editor-hint"></span>
                             </div>
                         </div>
                     </div>
@@ -592,8 +651,8 @@ class SoulstoneTracker {
                 .on('broadcast', { event: 'sync' }, (payload) => {
                     const rawPayload = payload.payload || payload;
                     const mapIdStr = rawPayload.mapId;
-                    if (mapIdStr && mapIdStr.startsWith(`${currentServer}_`)) {
-                        const localMapId = mapIdStr.replace(`${currentServer}_`, '');
+                    const localMapId = this.getLocalMapId(mapIdStr);
+                    if (localMapId) {
                         if (this.state[localMapId] && rawPayload.data) {
                             this.state[localMapId].nextSpawn = rawPayload.data.nextSpawn ? new Date(rawPayload.data.nextSpawn) : null;
                             this.state[localMapId].lastUpdated = rawPayload.data.lastUpdated ? new Date(rawPayload.data.lastUpdated) : null;
@@ -641,10 +700,12 @@ class SoulstoneTracker {
             // 獲取數據的同時一併同步時鐘
             await this.syncServerTime();
 
+            // 一次撈出本頁所有分流（含不同伺服器前綴）
+            const dbIds = CONFIG.MAPS.map(m => this.getServerMapId(m.id));
             const { data, error } = await this.supabase
                 .from('soulstone_timers')
                 .select('*')
-                .like('map_id', `${currentServer}_%`);
+                .in('map_id', dbIds);
 
             if (error) {
                 console.error('Error fetching from Supabase:', error);
@@ -653,7 +714,8 @@ class SoulstoneTracker {
 
             if (data && data.length > 0) {
                 data.forEach(row => {
-                    const localMapId = row.map_id.replace(`${currentServer}_`, '');
+                    const localMapId = this.getLocalMapId(row.map_id);
+                    if (!localMapId) return;
                     if (this.state[localMapId]) {
                         this.state[localMapId].nextSpawn = row.next_spawn ? new Date(row.next_spawn) : null;
                         this.state[localMapId].lastUpdated = new Date(row.updated_at);
@@ -675,9 +737,7 @@ class SoulstoneTracker {
 
         if (eventType === 'UPDATE' || eventType === 'INSERT') {
             const serverMapId = newRecord.map_id;
-            if (!serverMapId || !serverMapId.startsWith(`${currentServer}_`)) return;
-
-            const localMapId = serverMapId.replace(`${currentServer}_`, '');
+            const localMapId = this.getLocalMapId(serverMapId);
             if (localMapId && this.state[localMapId]) {
                 console.log(`[RealtimeSync] 收到資料庫更新 (${localMapId})，同步中...`);
                 this.state[localMapId].nextSpawn = newRecord.next_spawn ? new Date(newRecord.next_spawn) : null;
@@ -697,7 +757,7 @@ class SoulstoneTracker {
             return;
         }
 
-        const serverMapId = `${currentServer}_${mapId}`;
+        const serverMapId = this.getServerMapId(mapId);
         const data = {
             map_id: serverMapId,
             next_spawn: this.state[mapId].nextSpawn ? this.state[mapId].nextSpawn.toISOString() : null,
@@ -749,7 +809,7 @@ class SoulstoneTracker {
             if (saved) {
                 const data = JSON.parse(saved);
                 CONFIG.MAPS.forEach(map => {
-                    const serverMapId = `${currentServer}_${map.id}`;
+                    const serverMapId = this.getServerMapId(map.id);
                     if (data.maps && data.maps[serverMapId]) {
                         this.state[map.id] = {
                             ...this.state[map.id],
@@ -778,7 +838,7 @@ class SoulstoneTracker {
             }
 
             CONFIG.MAPS.forEach(map => {
-                const serverMapId = `${currentServer}_${map.id}`;
+                const serverMapId = this.getServerMapId(map.id);
                 data.maps[serverMapId] = {
                     nextSpawn: this.state[map.id].nextSpawn,
                     spawnMinutes: this.state[map.id].spawnMinutes,
@@ -838,7 +898,7 @@ class SoulstoneTracker {
             return;
         }
 
-        const serverMapId = `${currentServer}_${mapId}`;
+        const serverMapId = this.getServerMapId(mapId);
         const start = Date.now();
         try {
             const { data, error } = await this.supabase.rpc('adjust_spawn_time', {
@@ -873,7 +933,7 @@ class SoulstoneTracker {
             return;
         }
 
-        const serverMapId = `${currentServer}_${mapId}`;
+        const serverMapId = this.getServerMapId(mapId);
         const start = Date.now();
         try {
             const { data, error } = await this.supabase.rpc('set_spawn_now', {
@@ -892,6 +952,202 @@ class SoulstoneTracker {
             this.saveToSupabase(mapId, true);
             this.updateDisplay(mapId);
         }
+    }
+
+    /**
+     * ================================
+     * 手動編輯預計出現時間
+     * ================================
+     */
+
+    /**
+     * 取得資料庫（Supabase）目前的時間
+     */
+    async getDatabaseTime() {
+        try {
+            const { data, error } = await this.supabase.rpc('get_server_time');
+            if (!error && data && data.server_now) return new Date(data.server_now);
+        } catch (e) {
+            console.warn('[ManualTime] 取不到資料庫時間，改用已校準的本地時間');
+        }
+        return this.getCurrentServerTime();
+    }
+
+    /**
+     * 取得某時區在指定時刻的 UTC 偏移（毫秒）
+     */
+    getTimeZoneOffset(date, timeZone) {
+        const parts = {};
+        new Intl.DateTimeFormat('en-US', {
+            timeZone,
+            hour12: false,
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        }).formatToParts(date).forEach(p => { parts[p.type] = p.value; });
+
+        const asUTC = Date.UTC(
+            parseInt(parts.year, 10), parseInt(parts.month, 10) - 1, parseInt(parts.day, 10),
+            parseInt(parts.hour, 10) % 24, parseInt(parts.minute, 10), parseInt(parts.second, 10)
+        );
+        return asUTC - date.getTime();
+    }
+
+    /**
+     * 把 "YYYY-MM-DDTHH:MM:SS" 視為 timeZone 的當地時間，轉成 Date
+     */
+    parseLocalInput(value, timeZone) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/.exec(value || '');
+        if (!m) return null;
+
+        const wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+        // 兩段式校正，避免夏令時間造成誤差
+        let ts = wall - this.getTimeZoneOffset(new Date(wall), timeZone);
+        ts = wall - this.getTimeZoneOffset(new Date(ts), timeZone);
+        return new Date(ts);
+    }
+
+    /**
+     * 把 Date 格式化成 timeZone 的 "YYYY-MM-DDTHH:MM:SS"
+     */
+    formatLocalInput(date, timeZone) {
+        const parts = {};
+        new Intl.DateTimeFormat('en-US', {
+            timeZone,
+            hour12: false,
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        }).formatToParts(date).forEach(p => { parts[p.type] = p.value; });
+
+        const hour = parseInt(parts.hour, 10) % 24;
+        return `${parts.year}-${parts.month}-${parts.day}T${String(hour).padStart(2, '0')}:${parts.minute}:${parts.second}`;
+    }
+
+    /**
+     * 開啟時間編輯器
+     */
+    openTimeEditor(mapId) {
+        const card = document.getElementById(`card-${mapId}`);
+        if (!card) return;
+
+        const editor = card.querySelector('.time-editor');
+        const input = editor?.querySelector('.time-editor-input');
+        const hint = editor?.querySelector('.time-editor-hint');
+        if (!editor || !input) return;
+
+        const state = this.state[mapId];
+        input.value = this.formatLocalInput(state.nextSpawn || this.getCurrentServerTime(), this.currentTimeZone);
+        if (hint) {
+            hint.textContent = `時區 ${this.currentTimeZone} · 可直接輸入到秒`;
+            hint.className = 'time-editor-hint';
+        }
+
+        editor.hidden = false;
+        card.querySelector('.timer-value')?.setAttribute('hidden', '');
+        card.querySelector('.adjust-btns')?.setAttribute('hidden', '');
+        input.focus();
+    }
+
+    /**
+     * 關閉時間編輯器
+     */
+    closeTimeEditor(mapId) {
+        const card = document.getElementById(`card-${mapId}`);
+        if (!card) return;
+
+        const editor = card.querySelector('.time-editor');
+        if (editor) editor.hidden = true;
+        card.querySelector('.timer-value')?.removeAttribute('hidden');
+        card.querySelector('.adjust-btns')?.removeAttribute('hidden');
+    }
+
+    /**
+     * 儲存手動編輯的時間
+     * 以資料庫時間為基準寫入，寫完再讀回該列比對，確保與資料庫一致
+     */
+    async saveManualTime(mapId) {
+        const card = document.getElementById(`card-${mapId}`);
+        const editor = card?.querySelector('.time-editor');
+        const input = editor?.querySelector('.time-editor-input');
+        const hint = editor?.querySelector('.time-editor-hint');
+        if (!input || !input.value) return;
+
+        const target = this.parseLocalInput(input.value, this.currentTimeZone);
+        if (!target) {
+            if (hint) {
+                hint.textContent = '時間格式不正確';
+                hint.className = 'time-editor-hint err';
+            }
+            return;
+        }
+
+        if (!this.supabase) {
+            this.state[mapId].nextSpawn = target;
+            this.state[mapId].collectedUsed = false;
+            this.updateDisplay(mapId);
+            this.closeTimeEditor(mapId);
+            return;
+        }
+
+        const dbNow = await this.getDatabaseTime();
+        const serverMapId = this.getServerMapId(mapId);
+
+        // collected_used 代表「已擊殺、等待重生」。
+        // 設定未來時間 → 保留原本狀態；設定過去時間 → BOSS 正在場上，重設為 false
+        const collectedUsed = target.getTime() > dbNow.getTime()
+            ? (this.state[mapId]?.collectedUsed ?? false)
+            : false;
+
+        const { error } = await this.supabase
+            .from('soulstone_timers')
+            .upsert({
+                map_id: serverMapId,
+                next_spawn: target.toISOString(),
+                cycle_end_time: new Date(target.getTime() + CONFIG.DEFAULT_INTERVAL).toISOString(),
+                collected_used: collectedUsed,
+                updated_at: dbNow.toISOString()
+            }, { onConflict: 'map_id' });
+
+        if (error) {
+            console.error('[ManualTime] 寫入失敗:', error);
+            if (hint) {
+                hint.textContent = `寫入失敗：${error.message}`;
+                hint.className = 'time-editor-hint err';
+            }
+            return;
+        }
+
+        // 讀回資料庫的值做一致性驗證
+        const { data: row, error: readError } = await this.supabase
+            .from('soulstone_timers')
+            .select('*')
+            .eq('map_id', serverMapId)
+            .single();
+
+        if (readError || !row) {
+            if (hint) {
+                hint.textContent = '已寫入，但讀回驗證失敗';
+                hint.className = 'time-editor-hint err';
+            }
+            return;
+        }
+
+        const stored = new Date(row.next_spawn).getTime();
+        const delta = Math.abs(stored - target.getTime());
+        const dbText = this.formatLocalInput(new Date(stored), this.currentTimeZone);
+
+        console.log(`[ManualTime] ${serverMapId} 目標=${target.toISOString()} DB=${row.next_spawn} 差=${delta}ms`);
+
+        this.state[mapId].nextSpawn = new Date(stored);
+        this.state[mapId].lastUpdated = new Date(row.updated_at);
+        this.state[mapId].collectedUsed = row.collected_used ?? false;
+        this.state[mapId].cycleEndTime = row.cycle_end_time ? new Date(row.cycle_end_time) : null;
+        this.updateDisplay(mapId);
+
+        if (hint) {
+            hint.textContent = `✓ DB 已同步 ${dbText}（誤差 ${(delta / 1000).toFixed(3)} 秒）`;
+            hint.className = 'time-editor-hint ok';
+        }
+        setTimeout(() => this.closeTimeEditor(mapId), 2500);
     }
 
     /**
@@ -942,7 +1198,7 @@ class SoulstoneTracker {
             return true;
         }
 
-        const serverMapId = `${currentServer}_${mapId}`;
+        const serverMapId = this.getServerMapId(mapId);
         const start = Date.now();
         try {
             // 使用 upsert 確保新分流 (如 blood_bloodwind-ch1~ch5) 尚未存在於資料表時也能自動新增並更新
@@ -1005,7 +1261,7 @@ class SoulstoneTracker {
             return;
         }
 
-        const serverMapId = `${currentServer}_${mapId}`;
+        const serverMapId = this.getServerMapId(mapId);
         const start = Date.now();
         try {
             const { data, error } = await this.supabase.rpc('set_spawn_upcoming', {
@@ -1297,6 +1553,11 @@ class SoulstoneTracker {
         this.updateConnectionStatus(this.supabase !== null);
         this.updateLastUpdated();
         this.updateAlarmBtn(document.getElementById('alarm-toggle'));
+
+        // 時間值可點擊手動編輯
+        document.querySelectorAll('.timer-value').forEach(el => {
+            el.title = t('editTimeHint');
+        });
     }
 
     updateAlarmBtn(btn) {
@@ -1480,6 +1741,38 @@ class SoulstoneTracker {
                 const mapId = e.currentTarget.dataset.map;
                 const amount = parseInt(e.currentTarget.dataset.amount, 10);
                 this.adjustTime(mapId, amount);
+            });
+        });
+
+        // 手動編輯預計出現時間：點擊時間值開啟編輯器
+        document.querySelectorAll('.timer-value').forEach(el => {
+            el.addEventListener('click', () => {
+                this.openTimeEditor(el.id.replace('next-', ''));
+            });
+        });
+
+        document.querySelectorAll('.time-editor-save').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.saveManualTime(e.currentTarget.dataset.map);
+            });
+        });
+
+        document.querySelectorAll('.time-editor-cancel').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closeTimeEditor(e.currentTarget.dataset.map);
+            });
+        });
+
+        document.querySelectorAll('.time-editor-input').forEach(input => {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.saveManualTime(input.dataset.map);
+                } else if (e.key === 'Escape') {
+                    this.closeTimeEditor(input.dataset.map);
+                }
             });
         });
 
