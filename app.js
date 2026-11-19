@@ -1042,6 +1042,47 @@ class SoulstoneTracker {
         if (globalStatusEl) {
             globalStatusEl.textContent = t('globalStatusFormat', activeCount, warningCount);
         }
+
+        // 血風卡片依「出現時間」自動排序：最快出現的置頂
+        this.sortBloodChannels();
+    }
+
+    /**
+     * 依出現時間重新排列血風高原 / 血風平原的卡片
+     *   - 已經出現中（20 分鐘存活窗內）的 BOSS 排最前面
+     *   - 其餘依出現時間由近到遠，越慢的越往下
+     *   - 尚未設定時間的排最後
+     */
+    sortBloodChannels() {
+        if (!isBloodMode) return;
+
+        document.querySelectorAll('.blood-channels-container').forEach(container => {
+            const cards = Array.from(container.children);
+            const sorted = cards.slice().sort((a, b) => {
+                const keyA = this.getSpawnSortKey(a.dataset.map);
+                const keyB = this.getSpawnSortKey(b.dataset.map);
+                return keyA < keyB ? -1 : keyA > keyB ? 1 : 0;
+            });
+
+            // 順序沒變就不動 DOM，避免每秒重排造成畫面閃爍
+            if (cards.every((card, index) => card === sorted[index])) return;
+
+            sorted.forEach(card => container.appendChild(card));
+        });
+    }
+
+    /**
+     * 排序用的時間鍵：越小越先出現
+     */
+    getSpawnSortKey(mapId) {
+        const state = this.state[mapId];
+        if (!state || !state.nextSpawn) return Number.MAX_SAFE_INTEGER;
+
+        const spawnTime = state.nextSpawn.getTime();
+        const now = this.getCurrentServerTime().getTime();
+
+        // 已經出現中 → 當下就是最優先
+        return spawnTime <= now ? now : spawnTime;
     }
 
     /**

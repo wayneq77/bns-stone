@@ -655,6 +655,12 @@ body {
         text-align: center;
     }
 
+    /* 按鈕放大後避免在窄螢幕爆版 */
+    .header-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
     .logo {
         margin-bottom: 4px;
     }
@@ -813,13 +819,13 @@ body.blood-mode .site-header {
 }
 
 .blood-channel-card .adjust-btns {
-    grid-template-columns: repeat(4, 34px);
-    gap: 3px;
+    grid-template-columns: repeat(4, 44px);
+    gap: 4px;
 }
 
 .blood-channel-card .btn-adjust {
-    font-size: 0.82rem;
-    padding: 2px 0;
+    font-size: 1rem;
+    padding: 7px 0;
 }
 
 .blood-channel-card .card-actions {
@@ -837,8 +843,8 @@ body.blood-mode .site-header {
 .blood-channel-card .actions-bottom .btn {
     width: auto;
     flex: 1 !important;
-    font-size: 0.96rem;
-    padding: 5px 8px;
+    font-size: 1.12rem;
+    padding: 10px 10px;
 }
 
 .blood-ch-badge {
