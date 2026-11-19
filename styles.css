@@ -802,7 +802,7 @@ body.blood-mode .site-header {
 }
 
 /* ================================
-   定住 / 調整中
+   固定 / 調整中
 ================================ */
 .channel-pin-btn {
     background: rgba(56, 189, 248, 0.18);
@@ -837,7 +837,7 @@ body.blood-mode .site-header {
     box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
 }
 
-/* 手動定住：藍色外框 */
+/* 手動固定：藍色外框 */
 .blood-channel-card.is-pinned {
     border-color: rgba(56, 189, 248, 0.6);
     box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.25);

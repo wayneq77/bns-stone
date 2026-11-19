@@ -128,12 +128,12 @@ const I18N = {
         'qkStateDisabled': '已停用',
         'qkHintDisabled': '此分流已停用，點擊不會更新時間',
         'btnDisableChannel': '停用',
-        'btnPinChannel': '定住',
-        'btnUnpinChannel': '解釘',
+        'btnPinChannel': '固定',
+        'btnUnpinChannel': '取消固定',
         'btnAdjusting': '調整中',
-        'pinHint': '定住後此分流固定在此位置，不再自動換位',
-        'unpinHint': '解除定住，恢復依時間自動排序',
-        'adjustingHint': '微調中：此分流已暫時定住並高亮，停止操作 10 秒後自動解除',
+        'pinHint': '固定後此分流固定在此位置，不再自動換位',
+        'unpinHint': '取消固定，恢復依時間自動排序',
+        'adjustingHint': '微調中：此分流已暫時固定並高亮，停止操作 10 秒後自動解除',
         'btnEnableChannel': '啟用',
         'statusDisabled': '已停用',
         'toggleDisableHint': '停用後此分流固定排在最下面',
@@ -299,17 +299,17 @@ class SoulstoneTracker {
         this.disabledChannels = {};
         Object.keys(CHANNEL_SETTINGS_ROWS).forEach(board => this.disabledChannels[board] = new Set());
 
-        // 被「定住」的分流（固定位置、不再自動換位）— 每人自己的版面偏好，存在 localStorage
+        // 被「固定」的分流（固定位置、不再自動換位）— 每人自己的版面偏好，存在 localStorage
         try {
             this.pinnedChannels = new Set(JSON.parse(localStorage.getItem('soulstone-pinned-channels') || '[]'));
         } catch (e) {
             this.pinnedChannels = new Set();
         }
 
-        // 正在微調的分流：暫時釘住並高亮，避免調整途中卡片換位導致按錯分流
+        // 正在微調的分流：暫時固定並高亮，避免調整途中卡片換位導致按錯分流
         this.adjustingMapId = null;
         this.adjustingUntil = 0;
-        this.ADJUST_PIN_DURATION = 10000; // 停止操作 10 秒後自動解除釘住
+        this.ADJUST_PIN_DURATION = 10000; // 停止操作 10 秒後自動解除固定
 
         // Audio Context unlocker for Autoplay policies
         this.audioCtx = null;
@@ -496,7 +496,7 @@ class SoulstoneTracker {
                         </div>
                         <div class="header-right-group">
                             <span class="map-status" id="status-${map.id}" data-i18n="statusWaiting">等待設定</span>
-                            <button type="button" class="channel-pin-btn" data-map="${map.id}">定住</button>
+                            <button type="button" class="channel-pin-btn" data-map="${map.id}">固定</button>
                             <button type="button" class="channel-toggle-btn" data-map="${map.id}">停用</button>
                         </div>
                     </div>
@@ -544,6 +544,7 @@ class SoulstoneTracker {
                         <ul style="margin: 0; padding-left: 20px;">
                             <li><strong>快捷列（血風1~血風5 / 平原1~平原2）：</strong>每個 board 上方都有位置固定的快捷列，就是各分流的「已死掉」按鈕；BOSS 被擊殺後點擊，該分流的下次出現時間會設定為 <strong>當下時間的 180 分鐘（3小時）後</strong>。只有 BOSS 即將出現或已出現時按鈕才會亮綠色，其他狀態一律變暗，避免多人同時點錯分流。</li>
                             <li><strong>時間微調 (+10, -10, +1, -1)：</strong>若晚了幾分鐘才按按鈕，可使用微調按鈕往前或往後修正，讓各分流的倒數完美貼近真實時間。</li>
+                            <li><strong>固定：</strong>卡片右上角的「固定」可讓該分流固定在目前位置、不再跟著其他分流自動換位；進行時間微調時該卡會自動暫時固定並高亮，停止操作 10 秒後自動解除。按「取消固定」即可恢復依時間自動排序。此設定只影響自己看到的版面。</li>
                             <li><strong>停用 / 啟用：</strong>卡片右上角的「停用」可把目前沒在使用的分流（例如未開的 Ch.5）關閉，停用後該分流固定排在最下面、快捷列的那一格也會直接隱藏；再按一次「啟用」即可恢復。設定會同步到資料庫，所有人看到的都一樣。</li>
                         </ul>
                     </div>
@@ -552,6 +553,7 @@ class SoulstoneTracker {
                         <ul style="margin: 0; padding-left: 20px;">
                             <li><strong>Quick Bar (BW1~BW5 / Plain1~Plain2):</strong> Each board has a fixed quick row above the cards which acts as the "Boss Killed" button for that channel. When the boss dies, click it to set the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now. It only turns green when the boss is about to spawn or already spawned, and stays dark otherwise so nobody clicks the wrong channel.</li>
                             <li><strong>Adjust Buttons (+10, -10, +1, -1):</strong> Use these to fine-tune each channel's spawn timer if recorded slightly late.</li>
+                            <li><strong>Pin:</strong> The "固定" button on each card keeps that channel at its current position so it no longer re-orders with the others. Adjusting a channel auto-pins and highlights it for 10s after you stop. Click "取消固定" to resume sorting by time. This setting is personal to you.</li>
                             <li><strong>Disable / Enable:</strong> The "停用" button on each card switches off an unused channel (e.g. Ch.5). Disabled channels are pinned to the bottom and their quick-bar cell disappears completely. Click "啟用" to bring it back. The setting is stored in the database, so everyone sees the same state.</li>
                         </ul>
                     </div>
@@ -1006,7 +1008,7 @@ class SoulstoneTracker {
             return;
         }
 
-        // 調整期間暫時釘住並高亮該分流，避免卡片換位造成誤觸
+        // 調整期間暫時固定並高亮該分流，避免卡片換位造成誤觸
         this.markAdjusting(mapId);
         this.updateAllDisplays();
 
@@ -1498,7 +1500,7 @@ class SoulstoneTracker {
         document.querySelectorAll('.blood-channels-container').forEach(container => {
             const cards = Array.from(container.children);
 
-            // 已定住的卡留在原本的位置，只有其餘的卡在剩下的空位中排序
+            // 已固定的卡留在原本的位置，只有其餘的卡在剩下的空位中排序
             const movable = cards.filter(card => !this.isChannelPinned(card.dataset.map));
             const sortedMovable = movable.slice().sort((a, b) => {
                 const keyA = this.getSpawnSortKey(a.dataset.map);
@@ -1542,11 +1544,11 @@ class SoulstoneTracker {
     }
 
     // ================================
-    // 定住 / 調整中
+    // 固定 / 調整中
     // ================================
 
     /**
-     * 該分流目前是否釘住（手動定住 或 微調中的暫時釘住）
+     * 該分流目前是否固定（手動固定 或 微調中的暫時固定）
      */
     isChannelPinned(mapId) {
         if (this.adjustingMapId === mapId && Date.now() < this.adjustingUntil) return true;
@@ -1561,7 +1563,7 @@ class SoulstoneTracker {
     }
 
     /**
-     * 手動定住 / 解除定住（存於 localStorage，屬於個人版面偏好）
+     * 手動固定 / 取消固定（存於 localStorage，屬於個人版面偏好）
      */
     toggleChannelPinned(mapId) {
         if (this.pinnedChannels.has(mapId)) {
@@ -1580,7 +1582,7 @@ class SoulstoneTracker {
     }
 
     /**
-     * 開始微調：暫時釘住並高亮該分流，避免調整途中換位按到別人
+     * 開始微調：暫時固定並高亮該分流，避免調整途中換位按到別人
      */
     markAdjusting(mapId) {
         this.adjustingMapId = mapId;
@@ -1588,7 +1590,7 @@ class SoulstoneTracker {
     }
 
     /**
-     * 更新卡片上的定住按鈕（定住 / 解釘 / 調整中）
+     * 更新卡片上的固定按鈕（固定 / 取消固定 / 調整中）
      */
     updateChannelPin(mapId) {
         const btn = document.querySelector(`.channel-pin-btn[data-map="${mapId}"]`);
@@ -1604,7 +1606,7 @@ class SoulstoneTracker {
     }
 
     /**
-     * 定住 / 調整中的卡片樣式
+     * 固定 / 調整中的卡片樣式
      */
     applyPinState(mapId) {
         const cardEl = document.getElementById(`card-${mapId}`);
@@ -2185,7 +2187,7 @@ class SoulstoneTracker {
             });
         });
 
-        // 定住 / 解除定住：讓該分流固定在目前位置，不再自動換位
+        // 固定 / 取消固定：讓該分流固定在目前位置，不再自動換位
         document.querySelectorAll('.channel-pin-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
