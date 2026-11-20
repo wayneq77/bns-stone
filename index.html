@@ -6,7 +6,7 @@
     <title>劍靈：革命 靈石追蹤器</title>
     <meta property="og:title" content="劍靈：革命 · 靈石追蹤器">
     <meta property="og:description" content="劍靈：革命 · 及時掌握靈石動向">
-    <link rel="stylesheet" href="/styles.css?v=20261121_blood_v22">
+    <link rel="stylesheet" href="/styles.css?v=20261121_blood_v23">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
@@ -24,7 +24,10 @@
                 <p class="subtitle" data-i18n="subtitle">劍靈：革命 · 及時掌握靈石動向</p>
             </div>
             <div class="header-controls">
-                <span id="tw-clock" class="header-clock" title="台北時間（UTC+8）">--:--:--</span>
+                <span id="header-clock" class="header-clock" title="現在時間">
+                    <span class="clock-label" data-i18n="nowTime">現在時間</span>
+                    <span id="tw-clock" class="clock-time">--:--:--</span>
+                </span>
                 <select id="timezone-select" class="btn btn-sm" style="background:#374151; color:white; border:none; padding: 4px 8px; cursor:pointer; font-size: 0.8rem; border-radius: 4px;">
                     <option value="Asia/Taipei">UTC+8 (TW)</option>
                     <option value="Asia/Jakarta">UTC+7 (WIB)</option>
@@ -100,6 +103,6 @@
 
     <script src="/config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" id="supabase-cdn"></script>
-    <script src="/app.js?v=20261121_blood_v19"></script>
+    <script src="/app.js?v=20261121_blood_v20"></script>
 </body>
 </html>

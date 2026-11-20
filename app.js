@@ -104,6 +104,7 @@ const I18N = {
     'zh': {
         'title': isBloodMode ? '血風高原 & 平原 BOSS 追蹤器' : '靈石追蹤器',
         'subtitle': isBloodMode ? '劍靈：革命 · 掌握血風高原(5分流)與血風平原(2分流) BOSS 重生動向' : '劍靈：革命 · 及時掌握靈石動向',
+        'nowTime': '現在時間',
         'nextSpawn': '預計出現時間',
         'nextWave': '下波預計時間',
         'remaining': '距離出現還有',
@@ -192,6 +193,7 @@ const I18N = {
     'en': {
         'title': isBloodMode ? 'Bloodwind Boss Tracker' : 'Soulstone Tracker',
         'subtitle': isBloodMode ? 'B&S Revolution · Bloodwind Highland 5-Ch Boss Timer' : 'B&S Revolution · Realtime Tracker',
+        'nowTime': 'Now',
         'nextSpawn': 'Next Spawn',
         'nextWave': 'Next Wave',
         'remaining': 'Spawns In',
@@ -405,22 +407,33 @@ class SoulstoneTracker {
      * 使用校準後的伺服器時間，與畫面上的倒數一致
      */
     startClock() {
+        this.updateClock();
+        this.clockTimer = setInterval(() => this.updateClock(), 1000);
+    }
+
+    /**
+     * 更新右上角時鐘：跟著目前選擇的時區顯示（含秒數）
+     */
+    updateClock() {
         const el = document.getElementById('tw-clock');
         if (!el) return;
 
-        const tick = () => {
-            el.textContent = this.getCurrentServerTime().toLocaleTimeString('zh-TW', {
-                timeZone: 'Asia/Taipei',
+        el.textContent = this.getCurrentServerTime().toLocaleTimeString('zh-TW', {
+                timeZone: this.currentTimeZone,
                 hour12: false,
                 hourCycle: 'h23',
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit'
             });
-        };
 
-        tick();
-        this.clockTimer = setInterval(tick, 1000);
+        // 提示文字標示目前時區
+        const box = document.getElementById('header-clock');
+        if (box) {
+            const sel = document.getElementById('timezone-select');
+            const opt = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : '';
+            box.title = opt ? `${t('nowTime')} · ${opt}` : t('nowTime');
+        }
     }
 
     /**
@@ -2039,6 +2052,7 @@ class SoulstoneTracker {
         }
 
         this.updateAllDisplays();
+        this.updateClock();
         this.updateConnectionStatus(this.supabase !== null);
         this.updateLastUpdated();
         this.updateAlarmBtn(document.getElementById('alarm-toggle'));
@@ -2201,6 +2215,7 @@ class SoulstoneTracker {
             tzSelect.addEventListener('change', (e) => {
                 this.currentTimeZone = e.target.value;
                 localStorage.setItem('soulstone-timezone', this.currentTimeZone);
+                this.updateClock();
                 this.updateAllDisplays();
             });
         }

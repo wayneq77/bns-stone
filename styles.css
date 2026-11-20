@@ -596,18 +596,31 @@ body {
 
 /* 右上角：台灣目前時間（含秒數） */
 .header-clock {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
     background: #1f2937;
-    color: #e5e7eb;
-    font-size: 1.05rem;
-    font-weight: 700;
     padding: 7px 12px;
     border-radius: 4px;
     border: 1px solid #374151;
+    white-space: nowrap;
+}
+
+.header-clock .clock-label {
+    color: #9ca3af;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.header-clock .clock-time {
+    color: #e5e7eb;
+    font-size: 1.05rem;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.5px;
-    min-width: 86px;
+    min-width: 68px;
     text-align: center;
-    white-space: nowrap;
 }
 
 /* ================================
