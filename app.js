@@ -393,8 +393,34 @@ class SoulstoneTracker {
         // Start update loop
         this.startUpdateLoop();
 
+        // 右上角台灣目前時間（含秒數）
+        this.startClock();
+
         // Check notification permission
         this.checkNotificationPermission();
+    }
+
+    /**
+     * 右上角台灣目前時間（含秒數）
+     * 使用校準後的伺服器時間，與畫面上的倒數一致
+     */
+    startClock() {
+        const el = document.getElementById('tw-clock');
+        if (!el) return;
+
+        const tick = () => {
+            el.textContent = this.getCurrentServerTime().toLocaleTimeString('zh-TW', {
+                timeZone: 'Asia/Taipei',
+                hour12: false,
+                hourCycle: 'h23',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        };
+
+        tick();
+        this.clockTimer = setInterval(tick, 1000);
     }
 
     /**
