@@ -903,6 +903,13 @@ body.blood-mode .site-header {
     filter: grayscale(1);
 }
 
+/* 停用的分流 → 不閃爍（卡片不發光、數字不閃），但時間倒數照跑 */
+.blood-channel-card.channel-disabled,
+.blood-channel-card.channel-disabled .timer-countdown.danger,
+.blood-channel-card.channel-disabled .blinking-text {
+    animation: none;
+}
+
 .blood-channel-card .timer-display {
     margin-bottom: 0;
     padding: 4px 10px;
