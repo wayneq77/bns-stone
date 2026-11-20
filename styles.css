@@ -1177,6 +1177,12 @@ body.blood-mode .site-header {
     background: rgba(55, 65, 81, 0.35);
     border-color: rgba(107, 114, 128, 0.45);
     border-style: dashed;
+    cursor: not-allowed;
+}
+
+/* 非可點擊時段（等待中 / 已死掉）→ 游標顯示不可按 */
+.quick-kill-btn.qk-locked {
+    cursor: not-allowed;
 }
 
 /* 已停用 → 快捷列整格不顯示 */

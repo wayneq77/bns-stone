@@ -55,6 +55,11 @@ const CONFIG = {
     SUPABASE_KEY: window.APP_CONFIG?.SUPABASE_KEY || '',
     // Despawn window: 20 minutes after spawn
     DESPAWN_WINDOW: 20 * 60 * 1000,
+    // 快捷列「已死掉」按鈕的可點擊時段（以資料庫記錄的出現時間為準）
+    // 前 3 分鐘：容忍「王即將出現」的時間誤差
+    // 後 8 分鐘：容忍「王剛出現 → 擊殺 → 點擊」的延遲
+    QUICK_CLICK_BEFORE: 3 * 60 * 1000,
+    QUICK_CLICK_AFTER: 8 * 60 * 1000,
     // Map definitions
     MAPS: isBloodMode ? [
         // 左側：血風高原 (5分流)
@@ -122,9 +127,10 @@ const I18N = {
         'qkStateUpcoming': '即將出現',
         'qkStateActive': '出現中',
         'qkStateDead': '已死掉',
-        'qkHintLive': '點擊標記此分流 BOSS 已死掉（重置 3 小時）',
-        'qkHintIdle': '點擊＝此分流 BOSS 已死掉，下次出現 = 當下 + 3 小時',
-        'qkHintDead': '此分流 BOSS 已死掉，無需重複點擊',
+        'qkHintLive': '點擊標記此分流 BOSS 已死掉（下次出現 = 當下 + 3 小時）',
+        'qkHintIdle': '只有 BOSS 出現前後 3 分鐘才能點擊',
+        'qkHintWait': (...args) => `距離可點擊還有 ${args[0]} 分鐘`,
+        'qkHintDead': '此分流 BOSS 已死掉，等待下一次出現',
         'qkStateDisabled': '已停用',
         'qkHintDisabled': '此分流已停用，點擊不會更新時間',
         'btnDisableChannel': '停用',
@@ -209,9 +215,10 @@ const I18N = {
         'qkStateUpcoming': 'Upcoming',
         'qkStateActive': 'Active',
         'qkStateDead': 'Dead',
-        'qkHintLive': 'Click to mark this channel as killed (reset 3h)',
-        'qkHintIdle': 'Click = boss killed, next spawn = now + 3 hours',
-        'qkHintDead': 'This channel boss is already dead, no need to click again',
+        'qkHintLive': 'Click to mark this channel as killed (next spawn = now + 3 hours)',
+        'qkHintIdle': 'Only clickable within 3 minutes before/after the boss spawns',
+        'qkHintWait': (...args) => `Clickable in ${args[0]} min`,
+        'qkHintDead': 'Boss already dead, waiting for the next spawn',
         'qkStateDisabled': 'Disabled',
         'qkHintDisabled': 'This channel is disabled - clicking will not update the time',
         'btnDisableChannel': 'Disable',
@@ -284,6 +291,9 @@ function t(key, ...args) {
 class SoulstoneTracker {
     constructor() {
         this.state = {};
+        // 資料庫記錄的「原始」出現時間（不會被顯示層的自動外推改寫）
+        // 快捷列判斷「現在能不能點」時用它當錨點
+        this.rawNextSpawn = {};
         this.supabase = null;
         this.realtimeChannel = null;
         this.updateIntervals = {};
@@ -542,7 +552,7 @@ class SoulstoneTracker {
                     <div style="margin-bottom: 1.2rem;">
                         <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇹🇼 [TW] 繁體中文</div>
                         <ul style="margin: 0; padding-left: 20px;">
-                            <li><strong>快捷列（血風1~血風5 / 平原1~平原2）：</strong>每個 board 上方都有位置固定的快捷列，就是各分流的「已死掉」按鈕；點擊後該分流的下次出現時間就設定為 <strong>當下時間的 180 分鐘（3小時）後</strong>，規則一律如此。BOSS 即將出現或已出現時按鈕會亮綠色，方便辨識該按哪一格；同一分流剛按過（已死掉）時不會重複推算，避免多人同時點擊把時間越推越遠。</li>
+                            <li><strong>快捷列（血風1~血風5 / 平原1~平原2）：</strong>每個 board 上方都有位置固定的快捷列，就是各分流的「已死掉」按鈕；點擊後該分流的下次出現時間就設定為 <strong>當下時間的 180 分鐘（3小時）後</strong>，規則一律如此。只有 <strong>BOSS 預計出現時間的前 3 分鐘 ~ 後 8 分鐘</strong>按鈕才會亮綠色可點擊，其他時間一律變暗而且點了沒反應，避免多人同時管理時點錯分流（王死掉的時間本來就有幾分鐘誤差，所以留這個區間給大家按）。</li>
                             <li><strong>時間微調 (+10, -10, +1, -1)：</strong>若晚了幾分鐘才按按鈕，可使用微調按鈕往前或往後修正，讓各分流的倒數完美貼近真實時間。</li>
                             <li><strong>固定：</strong>卡片右上角的「固定」可讓該分流固定在目前位置、不再跟著其他分流自動換位；進行時間微調時該卡會自動暫時固定並高亮，停止操作 10 秒後自動解除。按「取消固定」即可恢復依時間自動排序。此設定只影響自己看到的版面。</li>
                             <li><strong>停用 / 啟用：</strong>卡片右上角的「停用」可把目前沒在使用的分流（例如未開的 Ch.5）關閉，停用後該分流固定排在最下面、快捷列的那一格也會直接隱藏；再按一次「啟用」即可恢復。設定會同步到資料庫，所有人看到的都一樣。</li>
@@ -551,7 +561,7 @@ class SoulstoneTracker {
                     <div style="margin-bottom: 0;">
                         <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇬🇧 [EN] English</div>
                         <ul style="margin: 0; padding-left: 20px;">
-                            <li><strong>Quick Bar (BW1~BW5 / Plain1~Plain2):</strong> Each board has a fixed quick row above the cards which acts as the "Boss Killed" button for that channel. Clicking it always sets the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now. The button turns green while the boss is about to spawn or already spawned, so you can tell which channel to press; a channel that was just marked dead cannot be pushed again, so two people clicking at once won't keep moving the time further.</li>
+                            <li><strong>Quick Bar (BW1~BW5 / Plain1~Plain2):</strong> Each board has a fixed quick row above the cards which acts as the "Boss Killed" button for that channel. Clicking it always sets the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now. The button is only green and clickable <strong>from 3 minutes before to 8 minutes after the recorded spawn time</strong>; at any other time it stays dark and clicking does nothing, so nobody presses the wrong channel.</li>
                             <li><strong>Adjust Buttons (+10, -10, +1, -1):</strong> Use these to fine-tune each channel's spawn timer if recorded slightly late.</li>
                             <li><strong>Pin:</strong> The "固定" button on each card keeps that channel at its current position so it no longer re-orders with the others. Adjusting a channel auto-pins and highlights it for 10s after you stop. Click "取消固定" to resume sorting by time. This setting is personal to you.</li>
                             <li><strong>Disable / Enable:</strong> The "停用" button on each card switches off an unused channel (e.g. Ch.5). Disabled channels are pinned to the bottom and their quick-bar cell disappears completely. Click "啟用" to bring it back. The setting is stored in the database, so everyone sees the same state.</li>
@@ -704,6 +714,20 @@ class SoulstoneTracker {
     }
 
     /**
+     * 設定分流的出現時間
+     *   state.nextSpawn  → 顯示用（會被顯示層自動外推改寫）
+     *   rawNextSpawn     → 資料庫記錄的原始值（不會被外推改寫），快捷列的點擊時段用它當錨點
+     */
+    setSpawnTimeRaw(mapId, value) {
+        const date = value ? new Date(value) : null;
+        if (this.state[mapId]) {
+            this.state[mapId].nextSpawn = date;
+        }
+        this.rawNextSpawn[mapId] = date;
+        return date;
+    }
+
+    /**
      * 將 RPC 回傳的結果套用到本地狀態，並重新校準時鐘
      * @param {string} mapId - 地圖 ID
      * @param {object} result - RPC 回傳的 JSON
@@ -723,7 +747,7 @@ class SoulstoneTracker {
 
         // 更新本地狀態
         if (this.state[mapId]) {
-            this.state[mapId].nextSpawn = result.next_spawn ? new Date(result.next_spawn) : null;
+            this.setSpawnTimeRaw(mapId, result.next_spawn);
             this.state[mapId].baseTime = result.base_time ? new Date(result.base_time) : null;
             this.state[mapId].collectedUsed = result.collected_used ?? false;
             this.state[mapId].lastUpdated = result.updated_at ? new Date(result.updated_at) : new Date();
@@ -756,7 +780,7 @@ class SoulstoneTracker {
                     const localMapId = this.getLocalMapId(mapIdStr);
                     if (localMapId) {
                         if (this.state[localMapId] && rawPayload.data) {
-                            this.state[localMapId].nextSpawn = rawPayload.data.nextSpawn ? new Date(rawPayload.data.nextSpawn) : null;
+                            this.setSpawnTimeRaw(localMapId, rawPayload.data.nextSpawn);
                             this.state[localMapId].lastUpdated = rawPayload.data.lastUpdated ? new Date(rawPayload.data.lastUpdated) : null;
                             this.state[localMapId].collectedUsed = rawPayload.data.collectedUsed ?? false;
                             this.state[localMapId].baseTime = rawPayload.data.baseTime ? new Date(rawPayload.data.baseTime) : null;
@@ -826,7 +850,7 @@ class SoulstoneTracker {
                     const localMapId = this.getLocalMapId(row.map_id);
                     if (!localMapId) return;
                     if (this.state[localMapId]) {
-                        this.state[localMapId].nextSpawn = row.next_spawn ? new Date(row.next_spawn) : null;
+                        this.setSpawnTimeRaw(localMapId, row.next_spawn);
                         this.state[localMapId].lastUpdated = new Date(row.updated_at);
                         this.state[localMapId].collectedUsed = row.collected_used ?? false;
                         this.state[localMapId].baseTime = row.base_time ? new Date(row.base_time) : null;
@@ -860,7 +884,7 @@ class SoulstoneTracker {
             const localMapId = this.getLocalMapId(serverMapId);
             if (localMapId && this.state[localMapId]) {
                 console.log(`[RealtimeSync] 收到資料庫更新 (${localMapId})，同步中...`);
-                this.state[localMapId].nextSpawn = newRecord.next_spawn ? new Date(newRecord.next_spawn) : null;
+                this.setSpawnTimeRaw(localMapId, newRecord.next_spawn);
                 this.state[localMapId].lastUpdated = new Date(newRecord.updated_at);
                 this.state[localMapId].collectedUsed = newRecord.collected_used ?? false;
                 this.state[localMapId].baseTime = newRecord.base_time ? new Date(newRecord.base_time) : null;
@@ -878,9 +902,11 @@ class SoulstoneTracker {
         }
 
         const serverMapId = this.getServerMapId(mapId);
+        // 寫回資料庫時使用「原始記錄值」，避免把顯示層自動外推後的時間蓋掉原始紀錄
+        const rawSpawn = this.rawNextSpawn[mapId] || this.state[mapId].nextSpawn;
         const data = {
             map_id: serverMapId,
-            next_spawn: this.state[mapId].nextSpawn ? this.state[mapId].nextSpawn.toISOString() : null,
+            next_spawn: rawSpawn ? new Date(rawSpawn).toISOString() : null,
             collected_used: this.state[mapId].collectedUsed,
             base_time: this.state[mapId].baseTime ? this.state[mapId].baseTime.toISOString() : null,
             updated_at: this.getCurrentServerTime().toISOString()
@@ -938,6 +964,8 @@ class SoulstoneTracker {
                             lastUpdated: data.maps[serverMapId].lastUpdated ? new Date(data.maps[serverMapId].lastUpdated) : null,
                             baseTime: data.maps[serverMapId].baseTime ? new Date(data.maps[serverMapId].baseTime) : null
                         };
+                        const rawSaved = data.rawNextSpawn ? data.rawNextSpawn[serverMapId] : null;
+                        this.rawNextSpawn[map.id] = rawSaved ? new Date(rawSaved) : this.state[map.id].nextSpawn;
                     }
                 });
                 this.updateAllDisplays();
@@ -956,6 +984,7 @@ class SoulstoneTracker {
                 const parsed = JSON.parse(existing);
                 if (parsed.maps) data = parsed;
             }
+            if (!data.rawNextSpawn) data.rawNextSpawn = {};
 
             CONFIG.MAPS.forEach(map => {
                 const serverMapId = this.getServerMapId(map.id);
@@ -967,6 +996,7 @@ class SoulstoneTracker {
                     cycleEndTime: this.state[map.id].cycleEndTime,
                     baseTime: this.state[map.id].baseTime
                 };
+                data.rawNextSpawn[serverMapId] = this.rawNextSpawn[map.id] ? this.rawNextSpawn[map.id].toISOString() : null;
             });
             localStorage.setItem('soulstone-tracker-data', JSON.stringify(data));
         } catch (error) {
@@ -1015,6 +1045,7 @@ class SoulstoneTracker {
         if (!this.supabase) {
             // Fallback: 本地計算
             state.nextSpawn = new Date(state.nextSpawn.getTime() + minutesToAdd * 60 * 1000);
+            this.rawNextSpawn[mapId] = new Date(state.nextSpawn.getTime());
             if (state.cycleEndTime) state.cycleEndTime = new Date(state.cycleEndTime.getTime() + minutesToAdd * 60 * 1000);
             this.saveToLocalStorage();
             this.updateDisplay(mapId);
@@ -1036,6 +1067,7 @@ class SoulstoneTracker {
             console.error('[RPC] adjust_spawn_time 失敗:', e);
             // Fallback
             state.nextSpawn = new Date(state.nextSpawn.getTime() + minutesToAdd * 60 * 1000);
+            this.rawNextSpawn[mapId] = new Date(state.nextSpawn.getTime());
             this.saveToSupabase(mapId, true);
             this.updateDisplay(mapId);
         }
@@ -1049,7 +1081,7 @@ class SoulstoneTracker {
     async setSpawnTime(mapId) {
         if (!this.supabase) {
             const now = new Date();
-            this.state[mapId].nextSpawn = now;
+            this.setSpawnTimeRaw(mapId, now);
             this.state[mapId].cycleEndTime = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
             this.state[mapId].collectedUsed = false;
             this.saveToLocalStorage();
@@ -1070,7 +1102,7 @@ class SoulstoneTracker {
             console.error('[RPC] set_spawn_now 失敗:', e);
             // Fallback
             const now = this.getCurrentServerTime();
-            this.state[mapId].nextSpawn = now;
+            this.setSpawnTimeRaw(mapId, now);
             this.state[mapId].cycleEndTime = new Date(now.getTime() + CONFIG.DEFAULT_INTERVAL);
             this.state[mapId].collectedUsed = false;
             this.saveToSupabase(mapId, true);
@@ -1207,7 +1239,7 @@ class SoulstoneTracker {
         }
 
         if (!this.supabase) {
-            this.state[mapId].nextSpawn = target;
+            this.setSpawnTimeRaw(mapId, target);
             this.state[mapId].collectedUsed = false;
             this.updateDisplay(mapId);
             this.closeTimeEditor(mapId);
@@ -1263,7 +1295,7 @@ class SoulstoneTracker {
 
         console.log(`[ManualTime] ${serverMapId} 目標=${target.toISOString()} DB=${row.next_spawn} 差=${delta}ms`);
 
-        this.state[mapId].nextSpawn = new Date(stored);
+        this.setSpawnTimeRaw(mapId, stored);
         this.state[mapId].lastUpdated = new Date(row.updated_at);
         this.state[mapId].collectedUsed = row.collected_used ?? false;
         this.state[mapId].cycleEndTime = row.cycle_end_time ? new Date(row.cycle_end_time) : null;
@@ -1298,7 +1330,7 @@ class SoulstoneTracker {
             // 如果已經跨越到新的循環，重置已撿完標記
             if (advanced) {
                 mapState.collectedUsed = false;
-                mapState.nextSpawn = new Date(currentNextSpawn);
+                this.setSpawnTimeRaw(mapId, currentNextSpawn);
             }
 
             // 核心修正：若新一波靈石已出現，忽略並重置舊有的「已採集」標記，以順利執行本次「已撿完」動作
@@ -1317,7 +1349,7 @@ class SoulstoneTracker {
         if (!this.supabase) {
             // Fallback: 本地計算
             mapState.collectedUsed = true;
-            mapState.nextSpawn = new Date(newTargetTime);
+            this.setSpawnTimeRaw(mapId, newTargetTime);
             mapState.cycleEndTime = mapState.nextSpawn;
             this.saveToLocalStorage();
             this.updateDisplay(mapId);
@@ -1353,7 +1385,7 @@ class SoulstoneTracker {
             console.error('[RPC] markCollected 失敗:', e);
             // Fallback: 本地與 saveToSupabase
             mapState.collectedUsed = true;
-            mapState.nextSpawn = new Date(newTargetTime);
+            this.setSpawnTimeRaw(mapId, newTargetTime);
             mapState.cycleEndTime = mapState.nextSpawn;
             this.saveToSupabase(mapId, true);
             this.updateDisplay(mapId);
@@ -1362,7 +1394,7 @@ class SoulstoneTracker {
     }
 
     resetTimer(mapId) {
-        this.state[mapId].nextSpawn = null;
+        this.setSpawnTimeRaw(mapId, null);
         this.state[mapId].collectedUsed = false;
         this.state[mapId].cycleEndTime = null;
         this.state[mapId].baseTime = null;
@@ -1379,7 +1411,7 @@ class SoulstoneTracker {
         if (!this.supabase) {
             const now = new Date();
             const finalSpawn = new Date(now.getTime() + 10 * 60 * 1000);
-            this.state[mapId].nextSpawn = finalSpawn;
+            this.setSpawnTimeRaw(mapId, finalSpawn);
             this.state[mapId].cycleEndTime = finalSpawn;
             this.state[mapId].collectedUsed = false;
             this.saveToLocalStorage();
@@ -1403,7 +1435,7 @@ class SoulstoneTracker {
         } catch (e) {
             console.error('[RPC] set_spawn_upcoming 失敗:', e);
             const now = this.getCurrentServerTime();
-            this.state[mapId].nextSpawn = new Date(now.getTime() + 10 * 60 * 1000);
+            this.setSpawnTimeRaw(mapId, now.getTime() + 10 * 60 * 1000);
             this.state[mapId].collectedUsed = false;
             this.saveToSupabase(mapId, true);
             this.updateDisplay(mapId);
@@ -1432,6 +1464,31 @@ class SoulstoneTracker {
     }
 
     /**
+     * 快捷列按鈕的可點擊時段
+     *   錨點 = 資料庫記錄的「預計出現時間」(raw)，不是顯示層自動外推後的值
+     *   窗口 = 錨點前 3 分鐘 ~ 錨點後 8 分鐘（王死掉有時間誤差，加上擊殺到點擊的延遲）
+     *   每 180 分鐘（一輪）重複一次，避免漏按一輪後永久鎖死
+     */
+    getQuickClickTiming(mapId) {
+        const state = this.state[mapId];
+        const base = this.rawNextSpawn[mapId] || (state ? state.nextSpawn : null);
+        if (!base) return null;
+
+        const now = this.getCurrentServerTime().getTime();
+        let anchor = new Date(base).getTime();
+        while (anchor + CONFIG.QUICK_CLICK_AFTER < now) {
+            anchor += CONFIG.COLLECTED_INTERVAL;
+        }
+
+        const remaining = anchor - now;
+        return {
+            anchor: new Date(anchor),
+            remaining,
+            clickable: remaining <= CONFIG.QUICK_CLICK_BEFORE && remaining >= -CONFIG.QUICK_CLICK_AFTER
+        };
+    }
+
+    /**
      * 更新血風高原快捷按鈕（血風1~血風5）的狀態與外觀
      *   - live：BOSS 即將出現或已出現 → 綠色，可點擊
      *   - dead：BOSS 已死掉、等待重生 → 變暗，不可重複點擊
@@ -1455,20 +1512,14 @@ class SoulstoneTracker {
             label = t('qkStateDisabled');
             hint = t('qkHintDisabled');
         } else if (state && state.nextSpawn) {
-            const now = this.getCurrentServerTime().getTime();
-            let spawn = state.nextSpawn.getTime();
-            while (spawn + CONFIG.DESPAWN_WINDOW <= now) spawn += CONFIG.DEFAULT_INTERVAL;
-            const remaining = spawn - now;
+            const timing = this.getQuickClickTiming(mapId);
+            const remaining = timing ? timing.remaining : 0;
 
-            // 綠色 = 這隻 BOSS 快要出現或已出現，方便辨識該按哪一格
-            // （按鈕任何時候都可按，規則一律是「當下 + 180 分鐘」）
-            if (remaining <= 0) {
+            // 綠色可點 = BOSS 出現時間的前 3 分鐘 ~ 後 8 分鐘
+            // 其他時間一律變暗且點了沒反應，避免多人同時管理時點錯分流
+            if (timing && timing.clickable) {
                 kind = 'live';
-                label = t('qkStateActive');
-                hint = t('qkHintLive');
-            } else if (remaining <= CONFIG.WARNING_BEFORE) {
-                kind = 'live';
-                label = t('qkStateUpcoming');
+                label = remaining <= 0 ? t('qkStateActive') : t('qkStateUpcoming');
                 hint = t('qkHintLive');
             } else if (state.collectedUsed) {
                 kind = 'dead';
@@ -1477,6 +1528,8 @@ class SoulstoneTracker {
             } else {
                 kind = 'idle';
                 label = t('qkStateWaitingBoss');
+                const waitMin = timing ? Math.ceil(timing.remaining / 60000) : 0;
+                hint = waitMin > 0 ? t('qkHintWait', waitMin) : t('qkHintIdle');
             }
         }
 
@@ -1484,7 +1537,11 @@ class SoulstoneTracker {
         btn.classList.add(`qk-${kind}`);
 
         // 停用的分流：快捷列整格隱藏，不佔版面
-        btn.classList.toggle('qk-hidden', this.isChannelDisabled(mapId));
+        const disabled = this.isChannelDisabled(mapId);
+        btn.classList.toggle('qk-hidden', disabled);
+        // 非可點擊時段 → 游標顯示不可按
+        btn.classList.toggle('qk-locked', !disabled && kind !== 'live');
+        btn.setAttribute('aria-disabled', kind === 'live' ? 'false' : 'true');
         btn.title = hint;
         btn.setAttribute('aria-label', `${t(btn.dataset.labelKey || 'qkLabel', btn.dataset.channel)} - ${label}`);
         if (stateEl) stateEl.textContent = label;
@@ -2209,7 +2266,6 @@ class SoulstoneTracker {
         document.querySelectorAll('.quick-kill-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const mapId = e.currentTarget.dataset.map;
-                const state = this.state[mapId];
 
                 // 事件結束後 currentTarget 會變 null，先取出按鈕參照
                 const btn = e.currentTarget;
@@ -2222,11 +2278,11 @@ class SoulstoneTracker {
                     return;
                 }
 
-                // 已死掉 → 不重複推算，避免多人同時點擊把時間越推越遠
-                const alreadyDead = state && state.collectedUsed
-                    && state.nextSpawn.getTime() > this.getCurrentServerTime().getTime();
-                if (alreadyDead) {
-                    console.warn(`[QuickKill] ${mapId} 已是死亡狀態，略過重複點擊`);
+                // 只有 BOSS 出現時間的前 3 分鐘 ~ 後 8 分鐘可以點
+                // 其他時間點了沒反應，避免多人同時管理時點錯分流
+                const timing = this.getQuickClickTiming(mapId);
+                if (!timing || !timing.clickable) {
+                    console.warn(`[QuickKill] ${mapId} 目前不在可點擊時段（出現前後 3 分鐘），略過`);
                     btn.classList.add('qk-shake');
                     setTimeout(() => btn.classList.remove('qk-shake'), 400);
                     return;
