@@ -1874,8 +1874,9 @@ class SoulstoneTracker {
             if (timerLabel) timerLabel.textContent = t('remaining');
             countdownEl.textContent = this.formatDuration(remaining);
 
-            // 警報 (精準判斷：跨過提前時間時觸發)
-            if (remaining <= CONFIG.ALARM_BEFORE && prevRemaining > CONFIG.ALARM_BEFORE) {
+            // 警報 (精準判斷：跨過提前時間時觸發)；已停用的分流不響
+            if (!this.isChannelDisabled(mapId)
+                && remaining <= CONFIG.ALARM_BEFORE && prevRemaining > CONFIG.ALARM_BEFORE) {
                 this.playAlarm();
             }
             
@@ -1903,8 +1904,8 @@ class SoulstoneTracker {
             const despawnRemaining = DESPAWN - spawnAge;
             const nextCycleTime = new Date(currentNextSpawn + CYCLE);
 
-            // 靈石剛出現時觸發專屬音效（精準判斷：從大於0變成小於等於0的瞬間）
-            if (remaining <= 0 && prevRemaining > 0) {
+            // 靈石剛出現時觸發專屬音效（精準判斷：從大於0變成小於等於0的瞬間）；已停用的分流不響
+            if (!this.isChannelDisabled(mapId) && remaining <= 0 && prevRemaining > 0) {
                 this.playSpawnSound();
             }
 
