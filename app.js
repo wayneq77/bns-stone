@@ -55,6 +55,9 @@ const CONFIG = {
     SUPABASE_KEY: window.APP_CONFIG?.SUPABASE_KEY || '',
     // Despawn window: 20 minutes after spawn
     DESPAWN_WINDOW: 20 * 60 * 1000,
+    // 快捷列「已死掉」按鈕的可點擊時段：BOSS 出現前後各 3 分鐘
+    // 避免多人同時管理時誤點，把已經打好的分流時間推到不對的位置
+    QUICK_CLICK_WINDOW: 3 * 60 * 1000,
     // Map definitions
     MAPS: isBloodMode ? [
         // 左側：血風高原 (5分流)
@@ -123,7 +126,7 @@ const I18N = {
         'qkStateActive': '出現中',
         'qkStateDead': '已死掉',
         'qkHintLive': '點擊標記此分流 BOSS 已死掉（重置 3 小時）',
-        'qkHintIdle': 'BOSS 尚未出現，點擊仍會重置 3 小時（請確認）',
+        'qkHintIdle': '等待中：只有快要出現的前後 3 分鐘才能點擊',
         'qkHintDead': '此分流 BOSS 已死掉，無需重複點擊',
         'qkStateDisabled': '已停用',
         'qkHintDisabled': '此分流已停用，點擊不會更新時間',
@@ -210,7 +213,7 @@ const I18N = {
         'qkStateActive': 'Active',
         'qkStateDead': 'Dead',
         'qkHintLive': 'Click to mark this channel as killed (reset 3h)',
-        'qkHintIdle': 'Boss has not spawned yet — clicking still resets 3h (please confirm)',
+        'qkHintIdle': 'Waiting: only clickable within 3 minutes before/after spawn',
         'qkHintDead': 'This channel boss is already dead, no need to click again',
         'qkStateDisabled': 'Disabled',
         'qkHintDisabled': 'This channel is disabled - clicking will not update the time',
@@ -542,7 +545,7 @@ class SoulstoneTracker {
                     <div style="margin-bottom: 1.2rem;">
                         <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇹🇼 [TW] 繁體中文</div>
                         <ul style="margin: 0; padding-left: 20px;">
-                            <li><strong>快捷列（血風1~血風5 / 平原1~平原2）：</strong>每個 board 上方都有位置固定的快捷列，就是各分流的「已死掉」按鈕；BOSS 被擊殺後點擊，該分流的下次出現時間會設定為 <strong>當下時間的 180 分鐘（3小時）後</strong>。只有 BOSS 即將出現或已出現時按鈕才會亮綠色，其他狀態一律變暗，避免多人同時點錯分流。</li>
+                            <li><strong>快捷列（血風1~血風5 / 平原1~平原2）：</strong>每個 board 上方都有位置固定的快捷列，就是各分流的「已死掉」按鈕；BOSS 被擊殺後點擊，該分流的下次出現時間會設定為 <strong>當下時間的 180 分鐘（3小時）後</strong>。只有 <strong>BOSS 出現前後 3 分鐘</strong>按鈕才會亮綠色可點擊，其他時間一律變暗而且點了沒反應，避免多人同時點錯分流。</li>
                             <li><strong>時間微調 (+10, -10, +1, -1)：</strong>若晚了幾分鐘才按按鈕，可使用微調按鈕往前或往後修正，讓各分流的倒數完美貼近真實時間。</li>
                             <li><strong>固定：</strong>卡片右上角的「固定」可讓該分流固定在目前位置、不再跟著其他分流自動換位；進行時間微調時該卡會自動暫時固定並高亮，停止操作 10 秒後自動解除。按「取消固定」即可恢復依時間自動排序。此設定只影響自己看到的版面。</li>
                             <li><strong>停用 / 啟用：</strong>卡片右上角的「停用」可把目前沒在使用的分流（例如未開的 Ch.5）關閉，停用後該分流固定排在最下面、快捷列的那一格也會直接隱藏；再按一次「啟用」即可恢復。設定會同步到資料庫，所有人看到的都一樣。</li>
@@ -551,7 +554,7 @@ class SoulstoneTracker {
                     <div style="margin-bottom: 0;">
                         <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇬🇧 [EN] English</div>
                         <ul style="margin: 0; padding-left: 20px;">
-                            <li><strong>Quick Bar (BW1~BW5 / Plain1~Plain2):</strong> Each board has a fixed quick row above the cards which acts as the "Boss Killed" button for that channel. When the boss dies, click it to set the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now. It only turns green when the boss is about to spawn or already spawned, and stays dark otherwise so nobody clicks the wrong channel.</li>
+                            <li><strong>Quick Bar (BW1~BW5 / Plain1~Plain2):</strong> Each board has a fixed quick row above the cards which acts as the "Boss Killed" button for that channel. When the boss dies, click it to set the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now. It only turns green and stays clickable <strong>within 3 minutes before/after the boss spawns</strong>; at any other time it stays dark and clicking does nothing, so nobody clicks the wrong channel.</li>
                             <li><strong>Adjust Buttons (+10, -10, +1, -1):</strong> Use these to fine-tune each channel's spawn timer if recorded slightly late.</li>
                             <li><strong>Pin:</strong> The "固定" button on each card keeps that channel at its current position so it no longer re-orders with the others. Adjusting a channel auto-pins and highlights it for 10s after you stop. Click "取消固定" to resume sorting by time. This setting is personal to you.</li>
                             <li><strong>Disable / Enable:</strong> The "停用" button on each card switches off an unused channel (e.g. Ch.5). Disabled channels are pinned to the bottom and their quick-bar cell disappears completely. Click "啟用" to bring it back. The setting is stored in the database, so everyone sees the same state.</li>
@@ -1455,18 +1458,13 @@ class SoulstoneTracker {
             label = t('qkStateDisabled');
             hint = t('qkHintDisabled');
         } else if (state && state.nextSpawn) {
-            const now = this.getCurrentServerTime().getTime();
-            let spawn = state.nextSpawn.getTime();
-            while (spawn + CONFIG.DESPAWN_WINDOW <= now) spawn += CONFIG.DEFAULT_INTERVAL;
-            const remaining = spawn - now;
+            const timing = this.getQuickKillTiming(mapId);
+            const remaining = timing ? timing.remaining : 0;
 
-            if (remaining <= 0) {
+            // 只有「快要出現的前後 3 分鐘」才開放點擊（綠色可點）
+            if (timing && timing.clickable) {
                 kind = 'live';
-                label = t('qkStateActive');
-                hint = t('qkHintLive');
-            } else if (remaining <= CONFIG.WARNING_BEFORE) {
-                kind = 'live';
-                label = t('qkStateUpcoming');
+                label = remaining <= 0 ? t('qkStateActive') : t('qkStateUpcoming');
                 hint = t('qkHintLive');
             } else if (state.collectedUsed) {
                 kind = 'dead';
@@ -1483,9 +1481,33 @@ class SoulstoneTracker {
 
         // 停用的分流：快捷列整格隱藏，不佔版面
         btn.classList.toggle('qk-hidden', this.isChannelDisabled(mapId));
+        // 非可點擊時段：明確標示不可按
+        const clickable = kind === 'live';
+        btn.classList.toggle('qk-locked', !clickable && kind !== 'off' && !this.isChannelDisabled(mapId));
+        btn.setAttribute('aria-disabled', clickable ? 'false' : 'true');
         btn.title = hint;
         btn.setAttribute('aria-label', `${t(btn.dataset.labelKey || 'qkLabel', btn.dataset.channel)} - ${label}`);
         if (stateEl) stateEl.textContent = label;
+    }
+
+    /**
+     * 取得快捷列按鈕的時間資訊
+     *   - remaining：距離下次出現還有多少毫秒（負數代表已出現）
+     *   - clickable：是否落在「BOSS 出現前後 3 分鐘」的可點擊時段
+     */
+    getQuickKillTiming(mapId) {
+        const state = this.state[mapId];
+        if (!state || !state.nextSpawn) return null;
+
+        const now = this.getCurrentServerTime().getTime();
+        let spawn = state.nextSpawn.getTime();
+        while (spawn + CONFIG.DESPAWN_WINDOW <= now) spawn += CONFIG.DEFAULT_INTERVAL;
+
+        const remaining = spawn - now;
+        return {
+            remaining,
+            clickable: remaining <= CONFIG.QUICK_CLICK_WINDOW && remaining > -CONFIG.QUICK_CLICK_WINDOW
+        };
     }
 
     /**
@@ -2220,8 +2242,17 @@ class SoulstoneTracker {
                     return;
                 }
 
+                // 等待中 → 不開放點擊，只有快要出現的前後 3 分鐘才可以按
+                const timing = this.getQuickKillTiming(mapId);
+                if (!timing || !timing.clickable) {
+                    console.warn(`[QuickKill] ${mapId} 目前不在可點擊時段（出現前後 3 分鐘），略過`);
+                    btn.classList.add('qk-shake');
+                    setTimeout(() => btn.classList.remove('qk-shake'), 400);
+                    return;
+                }
+
                 // 已死掉 → 不重複推算，避免多人同時點擊把時間越推越遠
-                const alreadyDead = state && state.nextSpawn && state.collectedUsed
+                const alreadyDead = state && state.collectedUsed
                     && state.nextSpawn.getTime() > this.getCurrentServerTime().getTime();
                 if (alreadyDead) {
                     console.warn(`[QuickKill] ${mapId} 已是死亡狀態，略過重複點擊`);

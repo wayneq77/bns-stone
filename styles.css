@@ -1177,6 +1177,12 @@ body.blood-mode .site-header {
     background: rgba(55, 65, 81, 0.35);
     border-color: rgba(107, 114, 128, 0.45);
     border-style: dashed;
+    cursor: not-allowed;
+}
+
+/* 非可點擊時段（等待中 / 已死掉）→ 游標顯示不可按 */
+.quick-kill-btn.qk-locked {
+    cursor: not-allowed;
 }
 
 /* 已停用 → 快捷列整格不顯示 */
@@ -1206,17 +1212,35 @@ body.blood-mode .site-header {
 
 @media (max-width: 580px) {
     .blood-quick-bar {
+        /* 手機版維持單排：四顆（甚至五顆）由左到右排滿，不換成兩排 */
+        flex-wrap: nowrap;
         gap: 6px;
-        padding: 8px;
+        padding: 8px 6px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .blood-quick-bar::-webkit-scrollbar {
+        display: none;
     }
 
     .quick-kill-btn {
-        flex: 1 1 calc(33.333% - 4px);
-        min-height: 54px;
+        flex: 1 1 0;
+        min-width: 0;
+        min-height: 52px;
+        padding: 6px 2px;
     }
 
     .qk-name {
-        font-size: 1.05rem;
+        font-size: 1rem;
+    }
+
+    .qk-state {
+        font-size: 0.62rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
     }
 
     /* 平原快捷列只有 2 顆，讓它們平均填滿整列 */
