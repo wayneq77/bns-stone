@@ -413,12 +413,13 @@ class SoulstoneTracker {
 
     /**
      * 更新右上角時鐘：跟著目前選擇的時區顯示（含秒數）
+     * 用瀏覽器本地時間 → 與使用者電腦的時鐘一致
      */
     updateClock() {
         const el = document.getElementById('tw-clock');
         if (!el) return;
 
-        el.textContent = this.getCurrentServerTime().toLocaleTimeString('zh-TW', {
+        el.textContent = new Date().toLocaleTimeString('zh-TW', {
                 timeZone: this.currentTimeZone,
                 hour12: false,
                 hourCycle: 'h23',
