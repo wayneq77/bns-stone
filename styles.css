@@ -1221,9 +1221,10 @@ body.blood-mode .site-header {
     cursor: not-allowed;
 }
 
-/* 已停用 → 快捷列整格不顯示 */
-.quick-kill-btn.qk-hidden {
-    display: none;
+/* 點不到時直接寫在按鈕上的原因（例如「還差 9 分」）→ 用醒目黃色 */
+.quick-kill-btn .qk-state.qk-flash {
+    color: #fbbf24;
+    font-size: 0.72rem;
 }
 
 /* 已停用 → 整個按鈕變暗且不可點 */
