@@ -191,8 +191,8 @@ const I18N = {
         'alarmSetting': (min) => `提前 ${min} 分鐘提醒`
     },
     'en': {
-        'title': isBloodMode ? 'Bloodwind Boss Tracker' : 'Soulstone Tracker',
-        'subtitle': isBloodMode ? 'B&S Revolution · Bloodwind Highland 5-Ch Boss Timer' : 'B&S Revolution · Realtime Tracker',
+        'title': isBloodMode ? 'Bloodstorm Boss Tracker' : 'Soulstone Tracker',
+        'subtitle': isBloodMode ? 'B&S Revolution · Bloodstorm Highlands 5-Ch Boss Timer' : 'B&S Revolution · Realtime Tracker',
         'nowTime': 'Now',
         'nextSpawn': 'Next Spawn',
         'nextWave': 'Next Wave',
@@ -210,8 +210,8 @@ const I18N = {
         'editTimeHint': 'Click to edit spawn time',
         'btnSaveTime': 'Save',
         'btnCancelEdit': 'Cancel',
-        'qkLabel': (n) => `BW${n}`,
-        'qkPlainLabel': (n) => `Plain${n}`,
+        'qkLabel': (n) => `BH${n}`,
+        'qkPlainLabel': (n) => `BP${n}`,
         'qkStateWaiting': 'Pending',
         'qkStateWaitingBoss': 'Waiting',
         'qkStateUpcoming': 'Upcoming',
@@ -235,9 +235,9 @@ const I18N = {
         'toggleDisableHint': 'Disabled channels are pinned to the bottom',
         'toggleEnableHint': 'Enable to resume sorting by time',
         'toggleSaveFailed': 'Failed to save the disabled state, please try again',
-        'bloodBannerTitle': 'Bloodwind Highland BOSS (5 Ch)',
+        'bloodBannerTitle': 'Bloodstorm Highlands BOSS (5 Ch)',
         'bloodBannerDesc': 'Respawns 3 hours (180m) after death · 10m upcoming warning',
-        'bloodPlainBannerTitle': 'Bloodwind Plain BOSS (2 Ch)',
+        'bloodPlainBannerTitle': 'Bloodstorm Plains BOSS (2 Ch)',
         'bloodPlainBannerDesc': 'Respawns 3 hours (180m) after death · 10m upcoming warning',
         // maps
         'spirit-stone-valley-ch1': 'Spirit Stone Valley Ch.1',
@@ -248,15 +248,15 @@ const I18N = {
         'blood-ruffian-base-ch2': 'Blood Ruffian Base Ch.2',
         'red-dragon-forge-ch1': 'Red Dragon Forge Ch.1',
         'red-dragon-forge-ch2': 'Red Dragon Forge Ch.2',
-        'bloodwind-ch1': 'Bloodwind Highland',
-        'bloodwind-ch2': 'Bloodwind Highland',
-        'bloodwind-ch3': 'Bloodwind Highland',
-        'bloodwind-ch4': 'Bloodwind Highland',
-        'bloodwind-ch5': 'Bloodwind Highland',
-        'bloodplain-ch1': 'Bloodwind Plain',
-        'bloodplain-ch2': 'Bloodwind Plain',
-        'bloodplain-ch1-asia': 'Bloodwind Plain',
-        'bloodplain-ch2-asia': 'Bloodwind Plain',
+        'bloodwind-ch1': 'Bloodstorm Highlands',
+        'bloodwind-ch2': 'Bloodstorm Highlands',
+        'bloodwind-ch3': 'Bloodstorm Highlands',
+        'bloodwind-ch4': 'Bloodstorm Highlands',
+        'bloodwind-ch5': 'Bloodstorm Highlands',
+        'bloodplain-ch1': 'Bloodstorm Plains',
+        'bloodplain-ch2': 'Bloodstorm Plains',
+        'bloodplain-ch1-asia': 'Bloodstorm Plains',
+        'bloodplain-ch2-asia': 'Bloodstorm Plains',
         // toasts & modals
         'toastShorten': '✅ Collected! Timer shortened by 20m',
         'toastCollected': isBloodMode ? '✅ Boss Killed! Next spawn in 180m (3h)' : '✅ Collected! Next spawn in 120m',
@@ -588,7 +588,7 @@ class SoulstoneTracker {
             const expBox = document.querySelector('.explanation-box');
             if (expBox) {
                 expBox.innerHTML = `
-                    <h3 style="color: var(--accent-gold); margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">機制說明 / Mechanism Explanation (血風高原 & 血風平原 BOSS)</h3>
+                    <h3 style="color: var(--accent-gold); margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">機制說明 / Mechanism Explanation (血風高原 & 血風平原 BOSS / Bloodstorm Highlands & Bloodstorm Plains BOSS)</h3>
                     <div style="margin-bottom: 1.2rem;">
                         <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇹🇼 [TW] 繁體中文</div>
                         <ul style="margin: 0; padding-left: 20px;">
@@ -601,7 +601,7 @@ class SoulstoneTracker {
                     <div style="margin-bottom: 0;">
                         <div style="color: white; font-weight: bold; margin-bottom: 4px;">🇬🇧 [EN] English</div>
                         <ul style="margin: 0; padding-left: 20px;">
-                            <li><strong>Quick Bar (BW1~BW5 / Plain1~Plain2):</strong> Each board has a fixed quick row above the cards which acts as the "Boss Killed" button for that channel. Clicking it always sets the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now. The button is only green and clickable <strong>from 3 minutes before to 8 minutes after the recorded spawn time</strong>; at any other time it stays dark and clicking does nothing, so nobody presses the wrong channel.</li>
+                            <li><strong>Quick Bar (BH1~BH5 = Bloodstorm Highlands / BP1~BP2 = Bloodstorm Plains):</strong> Each board has a fixed quick row above the cards which acts as the "Boss Killed" button for that channel. Clicking it always sets the channel's next spawn to <strong>180 minutes (3 hours)</strong> from now. The button is only green and clickable <strong>from 3 minutes before to 8 minutes after the recorded spawn time</strong>; at any other time it stays dark and clicking does nothing, so nobody presses the wrong channel.</li>
                             <li><strong>Adjust Buttons (+10, -10, +1, -1):</strong> Use these to fine-tune each channel's spawn timer if recorded slightly late.</li>
                             <li><strong>Pin:</strong> The "固定" button on each card keeps that channel at its current position so it no longer re-orders with the others. Adjusting a channel auto-pins and highlights it for 10s after you stop. Click "取消固定" to resume sorting by time. This setting is personal to you.</li>
                             <li><strong>Disable / Enable:</strong> The "停用" button on each card switches off an unused channel (e.g. Ch.5). Disabled channels are pinned to the bottom and their quick-bar cell disappears completely. Click "啟用" to bring it back. The setting is stored in the database, so everyone sees the same state.</li>
